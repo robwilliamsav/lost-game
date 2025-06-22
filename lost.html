@@ -173,68 +173,68 @@
         // Lighting System
         // Time-based color palettes for day/night cycle (24 entries for each hour)
         const timeOfDayColors = {
-            // Grass colors from dark green at night to bright green during day
+            // Grass colors - always green, just darker at night
             g: [
-                "#0a1a0a", "#0a1a0a", "#0a1a0a", "#0a1a0a", // 0-3am: Very dark green
-                "#0f250f", "#142f14", "#1a3a1a", "#1f451f", // 4-7am: Dawn approaching
-                "#27ae60", "#2ecc71", "#3fd47d", "#4dd888", // 8-11am: Morning brightening
-                "#5ddc94", "#6de0a0", "#7de4ac", "#8de8b8", // 12-3pm: Bright midday
-                "#7de4ac", "#6de0a0", "#5ddc94", "#4dd888", // 4-7pm: Afternoon fading
-                "#3fd47d", "#2ecc71", "#27ae60", "#1f451f", // 8-11pm: Evening darkening
+                "#1a5a2a", "#1a5a2a", "#1a5a2a", "#1a5a2a", // 0-3am: Dark green
+                "#1f6f2f", "#248434", "#29993a", "#2eae40", // 4-7am: Dawn approaching
+                "#33c346", "#38d84c", "#3ded52", "#42ff58", // 8-11am: Morning brightening
+                "#3ded52", "#38d84c", "#33c346", "#2eae40", // 12-3pm: Bright midday
+                "#33c346", "#38d84c", "#3ded52", "#42ff58", // 4-7pm: Afternoon
+                "#3ded52", "#38d84c", "#33c346", "#29993a", // 8-11pm: Evening
             ],
-            // Water colors from deep blue-black to bright blue
+            // Water colors - always blue, subtle variations
             w: [
-                "#0a0a1a", "#0a0a1a", "#0a0a1a", "#0a0a1a", // 0-3am: Almost black
-                "#0f0f25", "#14142f", "#1a1a3a", "#1f1f45", // 4-7am: Deep blue dawn
-                "#2980b9", "#3498db", "#3fa0e3", "#4aa8eb", // 8-11am: Morning blue
-                "#55b0f3", "#60b8fb", "#6bc0ff", "#76c8ff", // 12-3pm: Bright blue
-                "#6bc0ff", "#60b8fb", "#55b0f3", "#4aa8eb", // 4-7pm: Afternoon blue
-                "#3fa0e3", "#3498db", "#2980b9", "#1f1f45", // 8-11pm: Evening blue
+                "#1a4a7a", "#1a4a7a", "#1a4a7a", "#1a4a7a", // 0-3am: Dark blue
+                "#1f5f8f", "#2474a4", "#2989b9", "#2e9ece", // 4-7am: Dawn
+                "#33b3e3", "#38c8f8", "#3dddff", "#42e8ff", // 8-11am: Morning
+                "#3dddff", "#38c8f8", "#33b3e3", "#2e9ece", // 12-3pm: Bright
+                "#33b3e3", "#38c8f8", "#3dddff", "#42e8ff", // 4-7pm: Afternoon
+                "#3dddff", "#38c8f8", "#33b3e3", "#2989b9", // 8-11pm: Evening
             ],
-            // Tree colors darker than grass
+            // Tree colors - darker green than grass
             T: [
-                "#051005", "#051005", "#051005", "#051005", // 0-3am: Nearly black
-                "#0a1a0a", "#0f250f", "#142f14", "#1a3a1a", // 4-7am: Dark green dawn
-                "#1e7e34", "#229954", "#26b35c", "#2acc64", // 8-11am: Forest green
-                "#2ed66c", "#32e074", "#36ea7c", "#3af484", // 12-3pm: Bright green
-                "#36ea7c", "#32e074", "#2ed66c", "#2acc64", // 4-7pm: Afternoon
-                "#26b35c", "#229954", "#1e7e34", "#1a3a1a", // 8-11pm: Evening
+                "#0f3f1f", "#0f3f1f", "#0f3f1f", "#0f3f1f", // 0-3am: Dark forest
+                "#145424", "#19692a", "#1e7e2f", "#239334", // 4-7am: Dawn
+                "#28a83a", "#2dbd3f", "#32d244", "#37e74a", // 12-3pm: Day
+                "#32d244", "#2dbd3f", "#28a83a", "#239334", // 12-3pm: Bright
+                "#28a83a", "#2dbd3f", "#32d244", "#37e74a", // 4-7pm: Afternoon
+                "#32d244", "#2dbd3f", "#28a83a", "#1e7e2f", // 8-11pm: Evening
             ],
-            // Sand/beach colors
+            // Sand/beach colors - warm yellows
             b: [
-                "#1a1611", "#1a1611", "#1a1611", "#1a1611", // 0-3am: Dark sand
-                "#262117", "#332c1d", "#403723", "#4d4229", // 4-7am: Dawn sand
-                "#b8860b", "#daa520", "#e6b82d", "#f2cb3a", // 8-11am: Morning sand
-                "#ffd947", "#ffe654", "#fff361", "#ffff6e", // 12-3pm: Bright sand
-                "#fff361", "#ffe654", "#ffd947", "#f2cb3a", // 4-7pm: Afternoon
-                "#e6b82d", "#daa520", "#b8860b", "#4d4229", // 8-11pm: Evening
+                "#806020", "#806020", "#806020", "#806020", // 0-3am: Dark sand
+                "#957525", "#aa8a2a", "#bf9f2f", "#d4b434", // 4-7am: Dawn
+                "#e9c93a", "#fede3f", "#fff344", "#fffa4a", // 8-11am: Morning
+                "#fff344", "#fede3f", "#e9c93a", "#d4b434", // 12-3pm: Bright
+                "#e9c93a", "#fede3f", "#fff344", "#fffa4a", // 4-7pm: Afternoon
+                "#fff344", "#fede3f", "#e9c93a", "#bf9f2f", // 8-11pm: Evening
             ],
-            // Rock colors
+            // Rock colors - grays
             O: [
-                "#0f0f0f", "#0f0f0f", "#0f0f0f", "#0f0f0f", // 0-3am: Black
-                "#1a1a1a", "#252525", "#303030", "#3b3b3b", // 4-7am: Dark gray
-                "#7f8c8d", "#95a5a6", "#a0b0b1", "#abbbbcb", // 8-11am: Gray
-                "#b6c6c7", "#c1d1d2", "#ccdcdd", "#d7e7e8", // 12-3pm: Light gray
-                "#ccdcdd", "#c1d1d2", "#b6c6c7", "#abbbbc", // 4-7pm: Afternoon
-                "#a0b0b1", "#95a5a6", "#7f8c8d", "#3b3b3b", // 8-11pm: Evening
+                "#404040", "#404040", "#404040", "#404040", // 0-3am: Dark gray
+                "#505050", "#606060", "#707070", "#808080", // 4-7am: Dawn
+                "#909090", "#a0a0a0", "#b0b0b0", "#c0c0c0", // 8-11am: Morning
+                "#b0b0b0", "#a0a0a0", "#909090", "#808080", // 12-3pm: Bright
+                "#909090", "#a0a0a0", "#b0b0b0", "#c0c0c0", // 4-7pm: Afternoon
+                "#b0b0b0", "#a0a0a0", "#909090", "#707070", // 8-11pm: Evening
             ],
-            // Jungle (darker than regular trees)
+            // Jungle - very dark green
             J: [
-                "#030803", "#030803", "#030803", "#030803", // 0-3am: Almost black
-                "#051005", "#081508", "#0b1a0b", "#0e1f0e", // 4-7am: Very dark green
-                "#145a23", "#187028", "#1c862d", "#209c32", // 8-11am: Dark jungle
-                "#24b237", "#28c83c", "#2cde41", "#30f446", // 12-3pm: Jungle green
-                "#2cde41", "#28c83c", "#24b237", "#209c32", // 4-7pm: Afternoon
-                "#1c862d", "#187028", "#145a23", "#0e1f0e", // 8-11pm: Evening
+                "#0a2a0a", "#0a2a0a", "#0a2a0a", "#0a2a0a", // 0-3am: Very dark
+                "#0f3f0f", "#145414", "#19691a", "#1e7e1f", // 4-7am: Dawn
+                "#239324", "#28a82a", "#2dbd2f", "#32d234", // 8-11am: Morning
+                "#2dbd2f", "#28a82a", "#239324", "#1e7e1f", // 12-3pm: Bright
+                "#239324", "#28a82a", "#2dbd2f", "#32d234", // 4-7pm: Afternoon
+                "#2dbd2f", "#28a82a", "#239324", "#19691a", // 8-11pm: Evening
             ],
             // Default color for other terrain
             default: [
-                "#1a1a1a", "#1a1a1a", "#1a1a1a", "#1a1a1a", // 0-3am
-                "#252525", "#303030", "#3b3b3b", "#464646", // 4-7am
-                "#95a5a6", "#a5b5b6", "#b5c5c6", "#c5d5d6", // 8-11am
-                "#d5e5e6", "#e5f5f6", "#f5ffff", "#ffffff", // 12-3pm
-                "#f5ffff", "#e5f5f6", "#d5e5e6", "#c5d5d6", // 4-7pm
-                "#b5c5c6", "#a5b5b6", "#95a5a6", "#464646", // 8-11pm
+                "#505050", "#505050", "#505050", "#505050", // 0-3am
+                "#606060", "#707070", "#808080", "#909090", // 4-7am
+                "#a0a0a0", "#b0b0b0", "#c0c0c0", "#d0d0d0", // 8-11am
+                "#c0c0c0", "#b0b0b0", "#a0a0a0", "#909090", // 12-3pm
+                "#a0a0a0", "#b0b0b0", "#c0c0c0", "#d0d0d0", // 4-7pm
+                "#c0c0c0", "#b0b0b0", "#a0a0a0", "#808080", // 8-11pm
             ]
         };
 
@@ -271,11 +271,11 @@
             const baseRgb = hexToRgb(baseColor);
             let totalLight = { r: 0, g: 0, b: 0 };
             
-            // Ambient light based on time of day
+            // Ambient light based on time of day - very subtle
             const ambientIntensity = getAmbientIntensity();
-            totalLight.r += applyIntensity(255, ambientIntensity * 0.3);
-            totalLight.g += applyIntensity(255, ambientIntensity * 0.3);
-            totalLight.b += applyIntensity(255, ambientIntensity * 0.3);
+            totalLight.r += applyIntensity(255, ambientIntensity * 0.1);
+            totalLight.g += applyIntensity(255, ambientIntensity * 0.1);
+            totalLight.b += applyIntensity(255, ambientIntensity * 0.1);
             
             // Process each light source
             lightSources.forEach(light => {
@@ -305,54 +305,54 @@
         
         // Get ambient light intensity based on time of day
         function getAmbientIntensity() {
-            if (hr >= 6 && hr < 18) return 1.0; // Daytime
-            if (hr >= 18 && hr < 20) return 0.7; // Dusk
-            if (hr >= 20 || hr < 4) return 0.2; // Night
-            if (hr >= 4 && hr < 6) return 0.5; // Dawn
-            return 0.5;
+            if (hr >= 6 && hr < 18) return 0.9; // Daytime - slightly less than full
+            if (hr >= 18 && hr < 20) return 0.75; // Dusk
+            if (hr >= 20 || hr < 4) return 0.5; // Night - never too dark
+            if (hr >= 4 && hr < 6) return 0.65; // Dawn
+            return 0.7;
         }
         
-        // Get darkness level (0-255) based on time
+        // Get darkness level (0-255) based on time - much more subtle
         function getDarknessLevel() {
-            if (hr >= 6 && hr < 18) return 0; // Daytime
-            if (hr >= 18 && hr < 20) return 100; // Dusk
-            if (hr >= 20 || hr < 4) return 200; // Night
-            if (hr >= 4 && hr < 6) return 150; // Dawn
-            return 0;
+            if (hr >= 6 && hr < 18) return 20; // Daytime - very slight dimming
+            if (hr >= 18 && hr < 20) return 50; // Dusk
+            if (hr >= 20 || hr < 4) return 80; // Night - still visible
+            if (hr >= 4 && hr < 6) return 60; // Dawn
+            return 40;
         }
         
         // Update light sources based on current game state
         function updateLightSources() {
             lightSources.length = 0; // Clear existing light sources
             
-            // Player torch
+            // Player torch - subtle warm glow
             lightSources.push({
                 x: px,
                 y: py,
-                radius: 8,
-                intensity: 0.8,
-                color: '#ffaa55'
+                radius: 6,
+                intensity: 0.4,
+                color: '#ffcc88'
             });
             
-            // Camp lights
+            // Camp lights - gentle illumination
             camps.forEach(camp => {
                 lightSources.push({
                     x: camp.x,
                     y: camp.y,
-                    radius: 6,
-                    intensity: 0.6,
-                    color: '#ff9944'
+                    radius: 5,
+                    intensity: 0.3,
+                    color: '#ffddaa'
                 });
             });
             
-            // Fire lights
+            // Fire lights - brighter but not overwhelming
             fires.forEach(fire => {
                 lightSources.push({
                     x: fire.x,
                     y: fire.y,
-                    radius: 10,
-                    intensity: 1.0,
-                    color: '#ff6600'
+                    radius: 8,
+                    intensity: 0.5,
+                    color: '#ff8844'
                 });
             });
         }
