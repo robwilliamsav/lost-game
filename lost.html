@@ -1,1 +1,1085 @@
- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOST</title>
+    <style>
+        body {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent body scrolling */
+        }
+        #gameContainer {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            flex: 1; /* Take remaining vertical space */
+            overflow: hidden; /* Prevent container scrolling */
+        }
+        #gameArea { 
+            white-space: pre; 
+            line-height: 1; 
+            font-size: 14px; 
+            border: 2px solid #ecf0f1;
+            background-color: #34495e;
+            padding: 10px;
+            border-radius: 5px;
+            overflow: auto; /* Allow scrolling within game area if needed */
+            margin: 0 10px;
+            flex: 1; /* Take available width */
+            height: calc(100vh - 100px); /* Full height minus header and info */
+        }
+        #commandsGlossary, #legend {
+            font-size: 14px;
+            background-color: #34495e;
+            padding: 10px;
+            border-radius: 5px;
+            width: 200px;
+            height: calc(100vh - 100px); /* Match gameArea height */
+            overflow-y: auto;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 10px 20px;
+            box-sizing: border-box;
+        }
+        h1 { 
+            font-size: 48px; 
+            letter-spacing: 10px;
+            margin: 0; /* Remove margin */
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        #info { 
+            margin: 5px 0; 
+            font-size: 16px;
+            padding: 0 10px; /* Add horizontal padding */
+        }
+        #focus {
+            font-size: 16px;
+            flex: 1; /* Take remaining space */
+            text-align: center;
+            padding: 0 20px;
+        }
+        #score {
+            font-size: 18px;
+            font-weight: bold;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .T{color:#2ecc71} .g{color:#27ae60} .w{color:#3498db} 
+        .C{color:#e67e22} /* Added color for Corpses */
+        .G{color:#95a5a6} /* Added color for Graves */
+        .*{color:#e74c3c} .O{color:#95a5a6} .e{color:#e67e22}
+        .={color:#d35400} .^{color:#f1c40f} .b{color:#f39c12}
+        .s{color:#2980b9} .A{color:#7f8c8d} .J{color:#27ae60}
+        .S{color:#9b59b6} .a{color:pink} .X{color:#2c3e50}
+        .o{color:#bdc3c7} .F{color:red} .W{color:#7f8c8d}
+        .f{color:orange} .c{color:white} .C{color:black}
+        .G{color:grey} .t{color:brown}
+        .H{color:yellow} .P{color:purple} .L{color:blue}
+        .B{color:brown} .D{color:cyan}
+        .M{color:orange}
+        .@{color:lime} /* Helicopter */
+        .R{color:navy} /* Freighter */
+        .hidden { color: #34495e; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>LOST</h1>
+        <div id="focus"></div>
+        <div id="score">Score: 100%</div>
+    </div>
+    <div id="gameContainer">
+        <div id="legend">
+            <h3>Legend:</h3>
+            <p><span class="*">*</span> Player</p>
+            <p><span class="S">S</span> Survivor</p>
+            <p><span class="C">C</span> Corpse</p> <!-- Updated -->
+            <p><span class="G">G</span> Grave</p> <!-- Updated -->
+            <p><span class="a">a</span> Animal</p>
+            <p><span class="F">F</span> Fire</p>
+            <p><span class="T">T</span> Tree</p>
+            <p><span class="O">O</span> Rock</p>
+            <p><span class="w">w</span> Water</p>
+            <p><span class="W">W</span> Wall</p>
+            <p><span class="^">^</span> Camp</p>
+            <p><span class="t">t</span> Trap</p>
+            <p><span class="f">f</span> Food</p>
+            <p><span class="J">J</span> Jungle</p>
+            <p><span class="H">H</span> Hatch</p>
+            <p><span class="@">@</span> Helicopter</p>
+            <p><span class="P">P</span> Pearl</p>
+            <p><span class="L">L</span> Looking Glass</p>
+            <p><span class="B">B</span> Black Rock</p>
+            <p><span class="M">M</span> Flame</p>
+            <p><span class="R">R</span> Freighter</p>
+        </div>
+        <div id="gameArea"></div>
+        <div id="commandsGlossary">
+            <h3>Commands:</h3>
+            <p>Arrow keys: Move</p>
+            <p>Space: Interact/Collect / Activate Station</p>
+            <p>B: Build bridge</p>
+            <p>C: Build camp</p>
+            <p>W: Build wall</p>
+            <p>G: Build grave</p>
+            <p>T: Lay trap</p>
+            <p>E: Collect/Bury Corpse</p> <!-- Added for corpse actions -->
+            <div id="stationCommands"></div>
+        </div>
+    </div>
+    <div id="info"></div>
+    <script>
+        const w = 140, h = 60;
+        let m = Array(h).fill().map(() => Array(w).fill('g'));
+        let visible = Array(h).fill().map(() => Array(w).fill(false));
+        let px = 14, py = 30, wood = 0, stone = 0, food = 0, day = 1, hr = 0, min = 0;
+        let surv = [], anim = [], fires = [], camps = [], traps = [];
+        let earthTiles = new Map();
+        let lastJungleGrowthDay = 0;
+        let jungleCleared = 0;
+        let playerOnFireTurns = 0;
+        let survivorsOnFire = new Map();
+        let carryingCorpse = false;
+        let wallsBuilt = 0;
+        let score = 100;
+        let hatchCountdown = 108; // Starts at 108 and decrements by 1 per time increment
+        let hatchFound = false;
+        let hatchOpen = false;
+        let blackRockFound = false;
+        let dynamiteCollected = false;
+        let flameFound = false;
+        let pearlFound = false;
+        let lookingGlassFound = false;
+        let freighterSignaled = false;
+        let helicopterReached = false;
+        let survivorsRescued = 0;
+        let helicopterLocation = null;
+
+        let initialSurvivorCount = 15; // Reduced from 30 to 15
+
+        let currentFocus = 0;
+        const focuses = [
+            { name: "Escape the fire", check: () => fires.length === 0, quote: "I was broken and thought the island could fix me." },
+            { name: "Collect wood", check: () => wood >= 10, quote: "If we can't live together, we're going to die alone." },
+            { name: "Build a camp", check: () => camps.length >= 1, quote: "This place is different. It's special." }, // Updated to require at least one camp
+            { name: "Get the survivors to camp", check: () => surv.every(s => s.inCamp), quote: "You needed them and they needed you." },
+            { name: "Collect food", check: () => food >= 1, quote: "You know maybe if you eat more comfort food you wouldn't have to go around shooting people." },
+            { name: "Build defenses", check: () => wallsBuilt >= 10, quote: "A wise man once said that war was coming to this island. I think it just got here." },
+            { name: "Explore", check: () => jungleCleared >= 30, quote: "The record is spinning again. We're just not on the song we wanna be on." },
+            { name: "Find the Hatch", check: () => hatchFound, quote: "Don't tell me what I can't do." },
+            { name: "Open the Hatch", check: () => hatchOpen, quote: "See you in another life, brother." },
+            { name: "Unlock Unlimited Food", check: () => hatchOpen, quote: "I think I crashed your plane." },
+            { name: "Investigate the Radio Signal", check: () => flameFound, quote: "We have to go back!" },
+            { name: "Signal the Freighter", check: () => freighterSignaled, quote: "Guys, where are we?" },
+            { name: "Get to the Helicopter", check: () => helicopterReached, quote: "I'm one of the Oceanic Six." },
+            { name: "Ferry Survivors to the Freighter", check: () => survivorsRescued >= Math.floor(initialSurvivorCount * 0.75), quote: "So I guess we found our way home." }
+        ];
+
+        function genMap() {
+            for (let y = 0; y < h; y++) {
+                let seaWidth = 10 + Math.floor(Math.random() * 3) - 1;
+                for (let x = 0; x < seaWidth; x++) {
+                    m[y][x] = (Math.random() < 0.3) ? '~' : 's';
+                }
+                m[y][seaWidth] = 'b';
+            }
+
+            const aircraftX = 11, aircraftY = 30;
+            m[aircraftY][aircraftX] = 'A';
+            m[aircraftY][aircraftX + 1] = 'F';
+            fires.push({ y: aircraftY, x: aircraftX + 1, life: 10 }); // Initialize fire with life 10
+
+            px = 14; py = 30;
+            for (let i = 0; i < initialSurvivorCount; i++) {
+                surv.push({ x: 13 + Math.floor(Math.random() * 3), y: 29 + Math.floor(Math.random() * 3), inCamp: false, id: Date.now() + Math.random() });
+            }
+
+            let x = Math.floor(w * 0.7);
+            for (let y = 0; y < h; y++) {
+                let rw = Math.floor(Math.random() * 3) + 3;
+                for (let i = -Math.floor(rw / 2); i <= Math.floor(rw / 2); i++) {
+                    if (x + i >= 0 && x + i < w) m[y][x + i] = 'w';
+                }
+                x += Math.floor(Math.random() * 3) - 1;
+                x = Math.max(Math.min(x, w - 3), Math.floor(w * 0.6));
+            }
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 12; x < w; x++) {
+                    if (m[y][x] == 'g') {
+                        if (Math.random() < 0.1) m[y][x] = 'T';
+                        else if (Math.random() < 0.05) m[y][x] = 'O';
+                        else if (Math.random() < 0.02) m[y][x] = 'J';
+                    }
+                }
+            }
+
+            for (let i = 0; i < 30; i++) {
+                let x, y;
+                do {
+                    x = 12 + Math.floor(Math.random() * (w - 13));
+                    y = Math.floor(Math.random() * h);
+                } while (m[y][x] != 'g' && m[y][x] != 'T');
+                anim.push({ x: x, y: y });
+            }
+
+            // Place Dharma stations
+            placeDharmaStation('H', 'The Swan (Hatch)', aircraftX, aircraftY, 10);
+            placeDharmaStation('B', 'The Black Rock', aircraftX + 10, aircraftY, 8);
+            placeDharmaStation('P', 'The Pearl', aircraftX + 18, aircraftY, 20);
+            placeDharmaStation('L', 'The Looking Glass', aircraftX + 18, 0, 0);  // Place on the beach
+            placeDharmaStation('M', 'The Flame', Math.floor(w * 0.85), Math.floor(h / 2), 0);  // East of the river
+
+            for (let i = 0; i < 4; i++) {
+                updateTrees();
+            }
+
+            // Reveal initial area around the plane (15x15 grid centered on the airplane)
+            for (let y = aircraftY - 7; y <= aircraftY + 7; y++) {
+                for (let x = aircraftX - 7; x <= aircraftX + 7; x++) {
+                    if (x >= 0 && x < w && y >= 0 && y < h) {
+                        visible[y][x] = true;
+                    }
+                }
+            }
+        }
+
+        function placeDharmaStation(symbol, name, startX, startY, distance) {
+            let x, y;
+            do {
+                x = startX + Math.floor(Math.random() * (distance * 2 + 1)) - distance;
+                y = startY + Math.floor(Math.random() * (distance * 2 + 1)) - distance;
+            } while (x < 0 || x >= w || y < 0 || y >= h || (m[y][x] !== 'g' && m[y][x] !== 'T'));
+            m[y][x] = symbol;
+            console.log(`${name} placed at (${x}, ${y})`);
+        }
+
+        function update() {
+            let d = "";
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let c = m[y][x];
+                    if (x == px && y == py) {
+                        c = playerOnFireTurns > 0 ? 'F' : '*';
+                    }
+                    else {
+                        let survivor = surv.find(s => s.x == x && s.y == y);
+                        if (survivor) {
+                            if (!survivor.inCamp) {
+                                c = survivorsOnFire.has(survivor.id) ? 'F' : 'S';
+                            }
+                            // Survivors in camp do not display 'S'
+                        }
+                        else {
+                            let animal = anim.find(a => a.x == x && a.y == y);
+                            if (animal) {
+                                c = 'a';
+                            }
+                            else if (fires.some(f => f.y == y && f.x == x)) {
+                                c = 'F';
+                            }
+                            else {
+                                let trap = traps.find(t => t.x == x && t.y == y);
+                                if (trap) {
+                                    c = trap.hasFood ? 'f' : 't';
+                                }
+                                else if (c == '^') {
+                                    let camp = camps.find(camp => camp.x == x && camp.y == y);
+                                    if (camp) {
+                                        c = camp.occupied ? 'C' : '^'; // 'C' represents occupied camp
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    d += `<span class="${c}${visible[y][x] ? '' : ' hidden'}">${c}</span>`;
+                }
+                d += "\n";
+            }
+            document.getElementById('gameArea').innerHTML = d;
+
+            let peopleInCamps = camps.filter(camp => camp.occupied).length;
+            document.getElementById('info').textContent = `Wood: ${wood} | Stone: ${stone} | Food: ${food} | Day ${day}, ${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')} | People in camps: ${peopleInCamps} | Carrying Corpse: ${carryingCorpse} | Walls Built: ${wallsBuilt} | Hatch Countdown: ${hatchCountdown}`;
+            updateFocus();
+            document.getElementById('score').textContent = `Score: ${score.toFixed(1)}%`;
+
+            updateStationCommands();
+        }
+
+        function updateFocus() {
+            if (currentFocus < focuses.length && focuses[currentFocus].check()) {
+                currentFocus++;
+            }
+            if (currentFocus < focuses.length) {
+                document.getElementById('focus').innerHTML = `Current Focus: ${focuses[currentFocus].name}<br>Quote: "${focuses[currentFocus].quote}"`;
+            } else {
+                document.getElementById('focus').textContent = "All objectives completed!";
+            }
+        }
+
+        function move(dx, dy) {
+            let nx = px + dx, ny = py + dy;
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h && !['O', 's', '~', 'J'].includes(m[ny][nx])) {
+                if (m[ny][nx] == 'w' && m[py][px] != '=') return;
+                px = nx; py = ny;
+
+                if (m[ny][nx] == 'F') {
+                    playerOnFireTurns = 3;
+                } else if (playerOnFireTurns > 0) {
+                    playerOnFireTurns--;
+                }
+                // Recalculate fire danger each turn
+                if (playerOnFireTurns > 0 && m[py][px] == 'F') {
+                    playerOnFireTurns = 3;
+                }
+
+                // Check for animal capture
+                let animalIndex = anim.findIndex(a => a.x == px && a.y == py);
+                if (animalIndex !== -1 && Math.random() < 0.25) {
+                    food++;
+                    anim.splice(animalIndex, 1);
+                }
+                // Reveal adjacent squares
+                for (let y = ny - 2; y <= ny + 2; y++) {
+                    for (let x = nx - 2; x <= nx + 2; x++) {
+                        if (x >= 0 && x < w && y >= 0 && y < h) {
+                            visible[y][x] = true;
+                        }
+                    }
+                }
+                // Handle hatch countdown
+                if (hatchFound && !hatchOpen) {
+                    hatchCountdown--; // Decrease by 1 per step (15 minutes)
+                    if (hatchCountdown <= 10 && hatchCountdown > 0) { // Threshold at 10
+                        alert("Warning: Hatch countdown is low!");
+                    }
+                    if (hatchCountdown <= 0) {
+                        alert("Game Over: You didn't return to the hatch in time!");
+                        location.reload();
+                    }
+                }
+                if (helicopterLocation && nx === helicopterLocation.x && ny === helicopterLocation.y) {
+                    helicopterReached = true;
+                    alert("Congratulations! You've reached the helicopter and won the game!");
+                    location.reload();
+                }
+                advanceTime();
+            }
+        }
+
+        function action() {
+            // If on a station, activate it with space
+            let currentTile = m[py][px];
+            if (['H', 'B', 'P', 'L', 'M'].includes(currentTile)) {
+                activateStation(currentTile);
+                return; // Exit after station activation
+            }
+
+            // Collect corpse if on 'C'
+            if (currentTile === 'C' && !carryingCorpse) {
+                carryingCorpse = true;
+                // Find the camp that is occupied
+                let camp = camps.find(c => c.x === px && c.y === py && c.occupied);
+                if (camp) {
+                    camp.occupied = false; // Free up the camp
+                }
+                m[py][px] = 'e'; // Remove corpse from map
+                alert("You have collected a corpse. Find a grave to bury it.");
+            }
+            // Bury corpse if on 'G'
+            else if (currentTile === 'G' && carryingCorpse) {
+                buryCorpse();
+            }
+            else if (currentTile == 'T') { 
+                m[py][px] = 'e'; 
+                wood++; 
+                earthTiles.set(`${px},${py}`, day * 24 * 60 + hr * 60 + min); // Store current time in minutes
+            }
+            else if (adjacentTo(px, py, 'O')) {
+                let rockPos = getAdjacent(px, py, 'O');
+                if (rockPos) {
+                    let [rx, ry] = rockPos;
+                    m[ry][rx] = 'o';
+                }
+            }
+            else if (adjacentTo(px, py, 'o')) {
+                let rockPos = getAdjacent(px, py, 'o');
+                if (rockPos) {
+                    let [rx, ry] = rockPos;
+                    m[ry][rx] = 'e';
+                    stone++;
+                    earthTiles.set(`${rx},${ry}`, day * 24 * 60 + hr * 60 + min);
+                }
+            }
+            else if (adjacentTo(px, py, 'J')) {
+                let junglePos = getAdjacent(px, py, 'J');
+                if (junglePos) {
+                    let [jx, jy] = junglePos;
+                    clearJungle(jx, jy);
+                    jungleCleared++;
+                }
+            }
+            else if (currentTile == 'C' && !carryingCorpse) {
+                carryingCorpse = true;
+                m[py][px] = 'e';
+            }
+            else if (currentTile === 'f') {
+                food++;
+                m[py][px] = 'e';
+                traps = traps.filter(t => t.x !== px || t.y !== py);
+            }
+            advanceTime();
+        }
+
+        function activateStation(station) {
+            switch (station) {
+                case 'H':
+                    if (!hatchFound) {
+                        hatchFound = true;
+                        hatchCountdown = 108;
+                        alert("You've found the hatch! Return here periodically to reset the countdown.");
+                    } else if (!hatchOpen) {
+                        if (dynamiteCollected) {
+                            explodeHatch();
+                        } else {
+                            hatchCountdown = 108;
+                            alert("Hatch countdown has been reset.");
+                        }
+                    } else {
+                        food += 5; // Unlimited food from the hatch
+                        alert("You've collected unlimited food from the hatch.");
+                    }
+                    break;
+                case 'B':
+                    if (!blackRockFound) {
+                        blackRockFound = true;
+                        alert("You've found the Black Rock! You can now collect dynamite to open the hatch.");
+                    } else if (!dynamiteCollected) {
+                        dynamiteCollected = true;
+                        alert("You've collected dynamite from the Black Rock.");
+                    }
+                    break;
+                case 'P':
+                    if (!pearlFound) {
+                        pearlFound = true;
+                        alert("You've found The Pearl station! All Dharma stations are now revealed on the map.");
+                        // Reveal all Dharma stations on the map
+                        for (let y = 0; y < h; y++) {
+                            for (let x = 0; x < w; x++) {
+                                if (['H', 'B', 'P', 'L', 'M'].includes(m[y][x])) {
+                                    visible[y][x] = true;
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case 'L':
+                    if (!lookingGlassFound) {
+                        lookingGlassFound = true;
+                        alert("You've found The Looking Glass station! Signaling the freighter...");
+                        signalFreighter();
+                    }
+                    break;
+                case 'M':
+                    if (!flameFound) {
+                        flameFound = true;
+                        alert("You've found The Flame station! The entire map is now revealed.");
+                        // Reveal the entire map
+                        for (let y = 0; y < h; y++) {
+                            for (let x = 0; x < w; x++) {
+                                visible[y][x] = true;
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        function explodeHatch() {
+            // Find the hatch location
+            let hatch = null;
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    if (m[y][x] === 'H') {
+                        hatch = { x: x, y: y };
+                        break;
+                    }
+                }
+                if (hatch) break;
+            }
+
+            if (!hatch) {
+                alert("Hatch not found on the map!");
+                return;
+            }
+
+            let explosionRadius = 2;
+            for (let y = hatch.y - explosionRadius; y <= hatch.y + explosionRadius; y++) {
+                for (let x = hatch.x - explosionRadius; x <= hatch.x + explosionRadius; x++) {
+                    if (y >= 0 && y < h && x >= 0 && x < w) {
+                        if (Math.abs(x - hatch.x) + Math.abs(y - hatch.y) <= explosionRadius) {
+                            if (m[y][x] !== 'w' && m[y][x] !== '~') {
+                                m[y][x] = 'F'; // Set tile on fire
+                                fires.push({ y: y, x: x, life: 10 });
+                            }
+                            // Damage survivors on these tiles
+                            let survivor = surv.find(s => s.x === x && s.y === y);
+                            if (survivor && !survivor.inCamp) {
+                                survivorsOnFire.set(survivor.id, 2); // Survivor catches fire
+                            }
+                            // Damage player if within radius
+                            if (x === px && y === py) {
+                                playerOnFireTurns = 3;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Remove the hatch from the map
+            m[hatch.y][hatch.x] = 'e';
+            dynamiteCollected = false; // Dynamite is used
+            hatchOpen = true; // Hatch has exploded
+            alert("The hatch has exploded! Flames are spreading across the island.");
+        }
+
+        function buryCorpse() {
+            carryingCorpse = false;
+            alert("You have buried the corpse. The area feels calmer.");
+            score += 1; // Increase score for burying a corpse
+        }
+
+        function updateStationCommands() {
+            const stationCommands = document.getElementById('stationCommands');
+            stationCommands.innerHTML = ''; // Clear previous commands
+
+            let currentTile = m[py][px];
+            if (['H', 'B', 'P', 'L', 'M'].includes(currentTile)) {
+                stationCommands.innerHTML += '<p>Press "Space" to Activate</p>';
+            }
+
+            // Additional command for burying if carrying a corpse
+            if (carryingCorpse && currentTile === 'G') {
+                stationCommands.innerHTML += '<p>Press "E" to Bury Corpse</p>';
+            }
+
+            // Additional command for collecting corpse
+            if (currentTile === 'C' && !carryingCorpse) {
+                stationCommands.innerHTML += '<p>Press "E" to Collect Corpse</p>';
+            }
+        }
+
+        function clearJungle(x, y) {
+            [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dx, dy]) => {
+                let nx = x + dx, ny = y + dy;
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h && m[ny][nx] == 'J') {
+                    m[ny][nx] = 'g';
+                }
+            });
+            m[y][x] = 'g';
+        }
+
+        function adjacentTo(x, y, type) {
+            return [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) => {
+                let nx = x + dx, ny = y + dy;
+                return nx >= 0 && nx < w && ny >= 0 && ny < h && m[ny][nx] == type;
+            });
+        }
+
+        function getAdjacent(x, y, type) {
+            for (let [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+                let nx = x + dx, ny = y + dy;
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h && m[ny][nx] == type) {
+                    return [nx, ny];
+                }
+            }
+            return null;
+        }
+
+        function advanceTime() {
+            min += 15;
+            if (min >= 60) {
+                min -= 60;
+                hr++;
+                if (hr >= 24) {
+                    hr = 0;
+                    day++;
+                    updateGrassGrowth();
+                    if ((day - lastJungleGrowthDay) % 20 === 0) { // Adjusted for 15-minute steps
+                        updateTrees();
+                    }
+                }
+            }
+
+            // Handle Fire Spreading
+            handleFireSpreading();
+
+            updateSurvivors();
+            updateAnimals();
+            update();
+        }
+
+        function handleFireSpreading() {
+            // Only spread fires once per hour
+            if (min % 60 !== 0) return;
+
+            let newFires = [];
+            // Iterate backwards to safely remove fires
+            for (let i = fires.length - 1; i >= 0; i--) {
+                let fire = fires[i];
+                if (fire.life <= 0) {
+                    m[fire.y][fire.x] = 'e'; // Extinguish the fire on the map
+                    fires.splice(i, 1); // Remove fire from array
+                    continue;
+                }
+
+                const tileType = m[fire.y][fire.x];
+                // Determine spread probability based on tile type
+                let spreadProb;
+                if (tileType == 'J') spreadProb = 1.0; // Jungle
+                else if (tileType == 'T') spreadProb = 0.5; // Trees
+                else if (tileType == 'g') spreadProb = 0.3; // Grass
+                else spreadProb = 0; // No spread for other types
+
+                // Attempt to spread to adjacent tiles
+                [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dx, dy]) => {
+                    let nx = fire.x + dx, ny = fire.y + dy;
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h && !['w', 's', '~', 'O'].includes(m[ny][nx]) && m[ny][nx] !== 'F') {
+                        let prob = 0;
+                        if (m[ny][nx] == 'J') prob = 1.0;
+                        else if (m[ny][nx] == 'T') prob = 0.5;
+                        else if (m[ny][nx] == 'g') prob = 0.3;
+
+                        if (Math.random() < prob) {
+                            m[ny][nx] = 'F';
+                            newFires.push({ y: ny, x: nx, life: fire.life - 1 }); // New fire has life = parent.life -1
+                        }
+                    }
+                });
+
+                fire.life--; // Decrement fire's life
+            }
+
+            // Add new fires to the fires array
+            fires.push(...newFires);
+        }
+
+        function updateGrassGrowth() {
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    if (m[y][x] == 'e' || m[y][x] == 'X') {
+                        let key = `${x},${y}`;
+                        if (!earthTiles.has(key)) {
+                            earthTiles.set(key, day * 24 * 60 + hr * 60 + min); // Store current time in minutes
+                        }
+                        if (isAdjacentToGrass(x, y) && (day * 24 * 60 + hr * 60 + min) - earthTiles.get(key) >= 5 * 60) { // 5 hours in minutes
+                            m[y][x] = 'g';
+                            earthTiles.delete(key);
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateTrees() {
+            let newTrees = [];
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    if (m[y][x] == 'T') {
+                        let adjacentSpaces = [[0, 1], [0, -1], [1, 0], [-1, 0]].filter(([dx, dy]) => {
+                            let nx = x + dx, ny = y + dy;
+                            return nx >= 0 && nx < w && ny >= 0 && ny < h && m[ny][nx] == 'g';
+                        });
+                        if (adjacentSpaces.length > 0) {
+                            let [dx, dy] = adjacentSpaces[Math.floor(Math.random() * adjacentSpaces.length)];
+                            newTrees.push([x + dx, y + dy]);
+                        }
+                        if (adjacentSpaces.length === 0) {
+                            m[y][x] = 'J';  // Becomes a jungle
+                        }
+                    }
+                }
+            }
+            newTrees.forEach(([x, y]) => m[y][x] = 'T');
+            lastJungleGrowthDay = day;
+        }
+
+        function isAdjacentToGrass(x, y) {
+            return [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) => {
+                let nx = x + dx, ny = y + dy;
+                return nx >= 0 && nx < w && ny >= 0 && ny < h && m[ny][nx] == 'g';
+            });
+        }
+
+        function updateSurvivors() {
+            surv.forEach(s => {
+                if (s.inCamp) return; // Skip processing for survivors in camp
+
+                // Check if survivor is on fire
+                if (m[s.y][s.x] == 'F') {
+                    if (!survivorsOnFire.has(s.id)) {
+                        survivorsOnFire.set(s.id, 2); // Survivors burn for 2 turns (30 minutes)
+                    } else {
+                        let burnsLeft = survivorsOnFire.get(s.id);
+                        burnsLeft--;
+                        if (burnsLeft <= 0) {
+                            survivorsOnFire.delete(s.id);
+                            m[s.y][s.x] = 'C'; // Survivor turns into a corpse
+                            score -= 1; // Reduce score for survivor death
+                            alert(`A survivor has died at (${s.x}, ${s.y}).`);
+                        } else {
+                            survivorsOnFire.set(s.id, burnsLeft);
+                        }
+                    }
+                } else {
+                    // If survivor was burning and now not on fire
+                    if (survivorsOnFire.has(s.id)) {
+                        survivorsOnFire.delete(s.id);
+                    }
+                }
+
+                // Flee from fire if nearby
+                let nearbyFire = fires.find(f => Math.abs(f.x - s.x) <= 1 && Math.abs(f.y - s.y) <= 1);
+                if (nearbyFire) {
+                    let dx = s.x - nearbyFire.x;
+                    let dy = s.y - nearbyFire.y;
+                    let nx = s.x + Math.sign(dx);
+                    let ny = s.y + Math.sign(dy);
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h && !['A', 'w', 's', '~', 'O', 'F', 'J'].includes(m[ny][nx])) {
+                        s.x = nx;
+                        s.y = ny;
+                    }
+                } else {
+                    // Normal movement if no fire nearby
+                    let [dx, dy] = [[-1, 0], [1, 0], [0, -1], [0, 1]][Math.floor(Math.random() * 4)];
+                    let nx = s.x + dx, ny = s.y + dy;
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h && !['A', 'w', 's', '~', 'O', 'F', 'J'].includes(m[ny][nx])) {
+                        s.x = nx;
+                        s.y = ny;
+                        if (m[ny][nx] == '^') {
+                            let camp = camps.find(c => c.x == nx && c.y == ny);
+                            if (camp && !camp.occupied) {
+                                camp.occupied = true;
+                                s.inCamp = true;
+                                alert(`A survivor has moved into camp at (${nx}, ${ny}).`);
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Generate new survivors if less than initial count exist after the airplane crash is resolved
+            if (surv.length < initialSurvivorCount) {
+                while (surv.length < initialSurvivorCount) {
+                    let x, y;
+                    do {
+                        x = Math.floor(Math.random() * w);
+                        y = Math.floor(Math.random() * h);
+                    } while (m[y][x] != 'g');
+                    surv.push({ x: x, y: y, inCamp: false, id: Date.now() + Math.random() });
+                }
+            }
+        }
+
+        function updateAnimals() {
+            anim.forEach((a, index) => {
+                let [dx, dy] = [[-1, 0], [1, 0], [0, -1], [0, 1]][Math.floor(Math.random() * 4)];
+                let nx = a.x + dx, ny = a.y + dy;
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h && !['A', 's', 'w', '~', 'O', 'F', 'J', 'W'].includes(m[ny][nx])) {
+                    let trapIndex = traps.findIndex(t => t.x == nx && t.y == ny);
+                    if (trapIndex !== -1) {
+                        if (Math.random() < 0.75) {
+                            // Animal is caught
+                            traps[trapIndex].hasFood = true; // Mark trap as containing food
+                            m[ny][nx] = 'f'; // Update map to show food
+                            anim.splice(index, 1);
+                        } else {
+                            // Animal escapes, trap is broken
+                            traps.splice(trapIndex, 1);
+                            m[ny][nx] = 'e'; // Remove trap from map
+                        }
+                    } else {
+                        a.x = nx;
+                        a.y = ny;
+                    }
+                }
+            });
+        }
+
+        function placeStructure() {
+            const structures = [
+                [
+                    ['W', 'W', 'W', 'e'],
+                    ['W', 'e', 'e', 'e'],
+                    ['W', 'e', 'e', 'W'],
+                    ['W', 'W', 'W', 'W']
+                ],
+                // Add more structures if needed
+            ];
+
+            const structure = structures[Math.floor(Math.random() * structures.length)];
+            let x, y;
+            do {
+                x = Math.floor(Math.random() * (w - structure[0].length));
+                y = Math.floor(Math.random() * (h - structure.length));
+            } while (!canPlaceStructure(x, y, structure));
+
+            for (let i = 0; i < structure.length; i++) {
+                for (let j = 0; j < structure[i].length; j++) {
+                    m[y + i][x + j] = structure[i][j];
+                }
+            }
+        }
+
+        function canPlaceStructure(x, y, structure) {
+            for (let i = 0; i < structure.length; i++) {
+                for (let j = 0; j < structure[i].length; j++) {
+                    if (m[y + i][x + j] != 'g') return false;
+                }
+            }
+            return true;
+        }
+
+        function openHatch() {
+            if (hatchFound && dynamiteCollected && !hatchOpen) {
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        if (m[y][x] === 'H') {
+                            m[y][x] = 'e'; // 'e' represents the crater
+                            createExplosion(y, x);
+
+                            // Fling the player further to safety
+                            let safetyPositions = [
+                                [-4, 0], [4, 0], [0, -4], [0, 4],
+                                [-4, -4], [-4, 4], [4, -4], [4, 4],
+                                [-5, 0], [5, 0], [0, -5], [0, 5],
+                                [-5, -5], [-5, 5], [5, -5], [5, 5]
+                            ];
+                            for (let [dx, dy] of safetyPositions) {
+                                let nx = px + dx, ny = py + dy;
+                                if (nx >= 0 && nx < w && ny >= 0 && ny < h && !['X', 'F'].includes(m[ny][nx])) {
+                                    px = nx; py = ny;
+                                    break;
+                                }
+                            }
+
+                            hatchOpen = true;
+                            alert("The hatch has exploded! A crater and flames are left behind.");
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        function createExplosion(y, x) {
+            let explosionRadius = 2;
+            for (let i = -explosionRadius; i <= explosionRadius; i++) {
+                for (let j = -explosionRadius; j <= explosionRadius; j++) {
+                    let ny = y + i, nx = x + j;
+                    if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
+                        if (m[ny][nx] != 'w' && m[ny][nx] != '~') {
+                            m[ny][nx] = 'F'; // 'F' represents flames
+                            fires.push({ y: ny, x: nx, life: 10 }); // New fire with life 10
+                        }
+                    }
+                }
+            }
+        }
+
+        function signalFreighter() {
+            if (lookingGlassFound && !freighterSignaled) {
+                freighterSignaled = true;
+                // Place the freighter offshore
+                let freighterY = Math.floor(Math.random() * h);
+                m[freighterY][5] = 'R';
+                visible[freighterY][5] = true;
+                alert("You've signaled the freighter! It has appeared offshore.");
+                // Reveal all sea tiles
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        if (m[y][x] == 's' || m[y][x] == '~') {
+                            visible[y][x] = true;
+                        }
+                    }
+                }
+                // Place the helicopter in a random jungle or grass space east of the river
+                placeHelicopter();
+            }
+        }
+
+        function placeHelicopter() {
+            let x, y;
+            do {
+                x = Math.floor(Math.random() * Math.floor(w * 0.3)) + Math.floor(w * 0.7);
+                y = Math.floor(Math.random() * h);
+            } while (m[y][x] != 'J' && m[y][x] != 'g');
+            helicopterLocation = { x: x, y: y };
+            m[y][x] = '@';
+            visible[y][x] = true;
+            alert(`A helicopter has landed at (${x}, ${y})! Reach it to win the game.`);
+        }
+
+        function rescueSurvivors() {
+            if (freighterSignaled && helicopterReached) {
+                let rescueCount = Math.min(5, surv.length); // Rescue up to 5 survivors at a time
+                survivorsRescued += rescueCount;
+                surv.splice(0, rescueCount);
+                alert(`${rescueCount} survivors have been rescued! Total rescued: ${survivorsRescued}`);
+                
+                if (survivorsRescued >= Math.floor(initialSurvivorCount * 0.75)) {
+                    alert("Congratulations! You've rescued most of the survivors. The game is complete!");
+                    // Here you can add any end-game logic
+                }
+            }
+        }
+
+        genMap();
+        document.addEventListener('keydown', e => {
+            try {
+                // Prevent default behavior for arrow keys and space to stop page scrolling
+                if (e.key.startsWith('Arrow') || e.key === ' ') {
+                    e.preventDefault();
+                }
+                
+                if (e.key.startsWith('Arrow')) {
+                    move(...{'ArrowLeft': [-1, 0], 'ArrowRight': [1, 0], 'ArrowUp': [0, -1], 'ArrowDown': [0, 1]}[e.key]);
+                }
+                else if (e.key === ' ') {
+                    action();
+                }
+                else if (e.key.toLowerCase() == 'b') {
+                    if (wood > 0) {
+                        actionBridge();
+                    }
+                }
+                else if (e.key.toLowerCase() == 'c') {
+                    if (wood > 0) {
+                        actionCamp();
+                    }
+                }
+                else if (e.key.toLowerCase() == 'w') {
+                    if (wood > 0) {
+                        actionWall();
+                    }
+                }
+                else if (e.key.toLowerCase() == 'g') {
+                    if (stone > 0 && carryingCorpse) {
+                        actionGrave();
+                    }
+                }
+                else if (e.key.toLowerCase() == 't') {
+                    if (wood > 0) {
+                        actionTrap();
+                    }
+                }
+                else if (e.key.toLowerCase() == 'e') { // 'E' for corpse actions
+                    if (carryingCorpse && m[py][px] === 'G') {
+                        buryCorpse();
+                    }
+                    else if (m[py][px] === 'C' && !carryingCorpse) {
+                        carryingCorpse = true;
+                        m[py][px] = 'e';
+                        alert("You have collected a corpse. Find a grave to bury it.");
+                    }
+                }
+            } catch (error) {
+                console.error("Error occurred:", error);
+            }
+        });
+        update();
+
+        // Game loop
+        setInterval(() => {
+            // Reduce score over time
+            score = Math.max(0, score - 0.1);
+            
+            // Check win condition
+            if (survivorsRescued >= Math.floor(initialSurvivorCount * 0.75)) {
+                alert(`Congratulations! You've won the game with a score of ${score.toFixed(1)}%`);
+                location.reload();
+            }
+            
+            update();
+        }, 1000);
+
+        // Actions for building structures
+        function actionBridge() {
+            let waterAdjacent = [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) => {
+                let nx = px + dx, ny = py + dy;
+                return nx >= 0 && nx < w && ny >= 0 && ny < h && m[ny][nx] == 'w';
+            });
+            if (waterAdjacent) {
+                m[py][px] = '=';
+                wood--;
+                alert("Bridge built successfully.");
+            } else {
+                alert("No adjacent water to build a bridge.");
+            }
+        }
+
+        function actionCamp() {
+            // Check if a camp already exists at this location
+            let existingCamp = camps.find(c => c.x === px && c.y === py);
+            if (existingCamp) {
+                alert("A camp already exists here.");
+                return;
+            }
+
+            m[py][px] = '^';
+            wood--;
+            camps.push({ x: px, y: py, occupied: false });
+            alert("A new camp has been established here.");
+        }
+
+        function actionWall() {
+            if (m[py][px] == 'g' || m[py][px] == 'e') {
+                m[py][px] = 'W';
+                wood--;
+                wallsBuilt++;
+                alert("Wall built successfully.");
+            } else {
+                alert("Cannot build wall here.");
+            }
+        }
+
+        function actionGrave() {
+            if (m[py][px] == 'g' || m[py][px] == 'e') {
+                m[py][px] = 'G';
+                stone--;
+                carryingCorpse = false;
+                alert("You have built a grave here.");
+            } else {
+                alert("Cannot build grave here.");
+            }
+        }
+
+        function actionTrap() {
+            if (m[py][px] == 'g' || m[py][px] == 'e') {
+                traps.push({ x: px, y: py, hasFood: false });
+                m[py][px] = 't';
+                wood--;
+                alert("Trap laid successfully.");
+            } else {
+                alert("Cannot lay trap here.");
+            }
+        }
+
+    </script>
+</body>
+</html>
