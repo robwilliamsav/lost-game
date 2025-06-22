@@ -77,6 +77,61 @@
             font-weight: bold;
             flex-shrink: 0; /* Prevent shrinking */
         }
+        
+        /* Notification system styles */
+        #notifications {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        .notification {
+            background-color: rgba(52, 73, 94, 0.95);
+            color: #ecf0f1;
+            padding: 10px 15px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            animation: slideIn 0.3s ease-out;
+            font-size: 14px;
+        }
+        
+        .notification.warning {
+            border-left-color: #f39c12;
+        }
+        
+        .notification.error {
+            border-left-color: #e74c3c;
+        }
+        
+        .notification.success {
+            border-left-color: #27ae60;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
         .T{color:#2ecc71} .g{color:#27ae60} .w{color:#3498db} 
         .C{color:#e67e22} /* Added color for Corpses */
         .G{color:#95a5a6} /* Added color for Graves */
@@ -97,6 +152,7 @@
     </style>
 </head>
 <body>
+    <div id="notifications"></div>
     <div class="header">
         <h1>LOST</h1>
         <div id="focus"></div>
@@ -174,6 +230,29 @@
         let initialSurvivorCount = 15; // Reduced from 30 to 15
         let foodStores = []; // Array of food storage buildings
         let storedFood = 0; // Total food in storage
+        
+        // Notification system
+        function notify(message, type = 'info') {
+            const notificationsContainer = document.getElementById('notifications');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            notificationsContainer.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.5s ease-out';
+                setTimeout(() => {
+                    notification.remove();
+                }, 500);
+            }, 5000);
+            
+            // Keep only last 5 notifications
+            while (notificationsContainer.children.length > 5) {
+                notificationsContainer.removeChild(notificationsContainer.firstChild);
+            }
+        }
 
         // Lighting System
         // Time-based color palettes for day/night cycle (24 entries for each hour)
@@ -625,16 +704,16 @@
                 if (hatchFound && !hatchOpen) {
                     hatchCountdown--; // Decrease by 1 per step (15 minutes)
                     if (hatchCountdown <= 10 && hatchCountdown > 0) { // Threshold at 10
-                        alert("Warning: Hatch countdown is low!");
+                        notify("Warning: Hatch countdown is low!", 'warning');
                     }
                     if (hatchCountdown <= 0) {
-                        alert("Game Over: You didn't return to the hatch in time!");
+                        notify("Game Over: You didn't return to the hatch in time!", 'error');
                         location.reload();
                     }
                 }
                 if (helicopterLocation && nx === helicopterLocation.x && ny === helicopterLocation.y) {
                     helicopterReached = true;
-                    alert("Congratulations! You've reached the helicopter and won the game!");
+                    notify("Congratulations! You've reached the helicopter and won the game!", 'success');
                     location.reload();
                 }
                 advanceTime();
@@ -658,7 +737,7 @@
                     camp.occupied = false; // Free up the camp
                 }
                 m[py][px] = 'e'; // Remove corpse from map
-                alert("You have collected a corpse. Find a grave to bury it.");
+                notify("You have collected a corpse. Find a grave to bury it.");
             }
             // Bury corpse if on 'G'
             else if (currentTile === 'G' && carryingCorpse) {
@@ -670,15 +749,15 @@
                     // Store food
                     storedFood += food;
                     food = 0;
-                    alert(`Stored all food. Total in storage: ${storedFood}`);
+                    notify(`Stored all food. Total in storage: ${storedFood}`);
                 } else if (storedFood > 0) {
                     // Withdraw food
                     let withdraw = Math.min(5, storedFood);
                     food += withdraw;
                     storedFood -= withdraw;
-                    alert(`Withdrew ${withdraw} food. Remaining in storage: ${storedFood}`);
+                    notify(`Withdrew ${withdraw} food. Remaining in storage: ${storedFood}`);
                 } else {
-                    alert("No food to store or withdraw.");
+                    notify("No food to store or withdraw.");
                 }
             }
             else if (currentTile == 'T') { 
@@ -728,32 +807,32 @@
                     if (!hatchFound) {
                         hatchFound = true;
                         hatchCountdown = 108;
-                        alert("You've found the hatch! Return here periodically to reset the countdown.");
+                        notify("You've found the hatch! Return here periodically to reset the countdown.");
                     } else if (!hatchOpen) {
                         if (dynamiteCollected) {
                             explodeHatch();
                         } else {
                             hatchCountdown = 108;
-                            alert("Hatch countdown has been reset.");
+                            notify("Hatch countdown has been reset.");
                         }
                     } else {
                         food += 5; // Unlimited food from the hatch
-                        alert("You've collected unlimited food from the hatch.");
+                        notify("You've collected unlimited food from the hatch.");
                     }
                     break;
                 case 'B':
                     if (!blackRockFound) {
                         blackRockFound = true;
-                        alert("You've found the Black Rock! You can now collect dynamite to open the hatch.");
+                        notify("You've found the Black Rock! You can now collect dynamite to open the hatch.");
                     } else if (!dynamiteCollected) {
                         dynamiteCollected = true;
-                        alert("You've collected dynamite from the Black Rock.");
+                        notify("You've collected dynamite from the Black Rock.");
                     }
                     break;
                 case 'P':
                     if (!pearlFound) {
                         pearlFound = true;
-                        alert("You've found The Pearl station! All Dharma stations are now revealed on the map.");
+                        notify("You've found The Pearl station! All Dharma stations are now revealed on the map.");
                         // Reveal all Dharma stations on the map
                         for (let y = 0; y < h; y++) {
                             for (let x = 0; x < w; x++) {
@@ -767,14 +846,14 @@
                 case 'L':
                     if (!lookingGlassFound) {
                         lookingGlassFound = true;
-                        alert("You've found The Looking Glass station! Signaling the freighter...");
+                        notify("You've found The Looking Glass station! Signaling the freighter...");
                         signalFreighter();
                     }
                     break;
                 case 'M':
                     if (!flameFound) {
                         flameFound = true;
-                        alert("You've found The Flame station! The entire map is now revealed.");
+                        notify("You've found The Flame station! The entire map is now revealed.");
                         // Reveal the entire map
                         for (let y = 0; y < h; y++) {
                             for (let x = 0; x < w; x++) {
@@ -802,7 +881,7 @@
             }
 
             if (!hatch) {
-                alert("Hatch not found on the map!");
+                notify("Hatch not found on the map!");
                 return;
             }
 
@@ -833,12 +912,12 @@
             m[hatch.y][hatch.x] = 'e';
             dynamiteCollected = false; // Dynamite is used
             hatchOpen = true; // Hatch has exploded
-            alert("The hatch has exploded! Flames are spreading across the island.");
+            notify("The hatch has exploded! Flames are spreading across the island.");
         }
 
         function buryCorpse() {
             carryingCorpse = false;
-            alert("You have buried the corpse. The area feels calmer.");
+            notify("You have buried the corpse. The area feels calmer.");
             score += 1; // Increase score for burying a corpse
         }
 
@@ -1051,7 +1130,7 @@
                 'hunt': 'Hunt for food'
             };
             
-            alert(`Survivor ordered to: ${commandText[command]}`);
+            notify(`Survivor ordered to: ${commandText[command]}`);
         }
 
         function updateSurvivors() {
@@ -1077,7 +1156,7 @@
                             survivorsOnFire.delete(s.id);
                             m[s.y][s.x] = 'C'; // Survivor turns into a corpse
                             score -= 1; // Reduce score for survivor death
-                            alert(`A survivor has died at (${s.x}, ${s.y}).`);
+                            notify(`A survivor has died at (${s.x}, ${s.y}).`);
                         } else {
                             survivorsOnFire.set(s.id, burnsLeft);
                         }
@@ -1206,7 +1285,7 @@
                         if (camp && !camp.occupied) {
                             camp.occupied = true;
                             s.inCamp = true;
-                            alert(`A survivor has moved into camp at (${s.x}, ${s.y}).`);
+                            notify(`A survivor has moved into camp at (${s.x}, ${s.y}).`);
                         }
                     }
                 }
@@ -1315,7 +1394,7 @@
                             }
 
                             hatchOpen = true;
-                            alert("The hatch has exploded! A crater and flames are left behind.");
+                            notify("The hatch has exploded! A crater and flames are left behind.");
                             return;
                         }
                     }
@@ -1345,7 +1424,7 @@
                 let freighterY = Math.floor(Math.random() * h);
                 m[freighterY][5] = 'R';
                 visible[freighterY][5] = true;
-                alert("You've signaled the freighter! It has appeared offshore.");
+                notify("You've signaled the freighter! It has appeared offshore.");
                 // Reveal all sea tiles
                 for (let y = 0; y < h; y++) {
                     for (let x = 0; x < w; x++) {
@@ -1368,7 +1447,7 @@
             helicopterLocation = { x: x, y: y };
             m[y][x] = '@';
             visible[y][x] = true;
-            alert(`A helicopter has landed at (${x}, ${y})! Reach it to win the game.`);
+            notify(`A helicopter has landed at (${x}, ${y})! Reach it to win the game.`);
         }
 
         function rescueSurvivors() {
@@ -1376,10 +1455,10 @@
                 let rescueCount = Math.min(5, surv.length); // Rescue up to 5 survivors at a time
                 survivorsRescued += rescueCount;
                 surv.splice(0, rescueCount);
-                alert(`${rescueCount} survivors have been rescued! Total rescued: ${survivorsRescued}`);
+                notify(`${rescueCount} survivors have been rescued! Total rescued: ${survivorsRescued}`);
                 
                 if (survivorsRescued >= Math.floor(initialSurvivorCount * 0.75)) {
-                    alert("Congratulations! You've rescued most of the survivors. The game is complete!");
+                    notify("Congratulations! You've rescued most of the survivors. The game is complete!");
                     // Here you can add any end-game logic
                 }
             }
@@ -1431,7 +1510,7 @@
                     else if (m[py][px] === 'C' && !carryingCorpse) {
                         carryingCorpse = true;
                         m[py][px] = 'e';
-                        alert("You have collected a corpse. Find a grave to bury it.");
+                        notify("You have collected a corpse. Find a grave to bury it.");
                     }
                 }
                 else if (e.key.toLowerCase() == 'f') {
@@ -1461,7 +1540,7 @@
             
             // Check win condition
             if (survivorsRescued >= Math.floor(initialSurvivorCount * 0.75)) {
-                alert(`Congratulations! You've won the game with a score of ${score.toFixed(1)}%`);
+                notify(`Congratulations! You've won the game with a score of ${score.toFixed(1)}%`, 'success');
                 location.reload();
             }
             
@@ -1477,9 +1556,9 @@
             if (waterAdjacent) {
                 m[py][px] = '=';
                 wood--;
-                alert("Bridge built successfully.");
+                notify("Bridge built successfully.");
             } else {
-                alert("No adjacent water to build a bridge.");
+                notify("No adjacent water to build a bridge.");
             }
         }
 
@@ -1487,14 +1566,14 @@
             // Check if a camp already exists at this location
             let existingCamp = camps.find(c => c.x === px && c.y === py);
             if (existingCamp) {
-                alert("A camp already exists here.");
+                notify("A camp already exists here.");
                 return;
             }
 
             m[py][px] = '^';
             wood--;
             camps.push({ x: px, y: py, occupied: false });
-            alert("A new camp has been established here.");
+            notify("A new camp has been established here.");
         }
 
         function actionWall() {
@@ -1502,9 +1581,9 @@
                 m[py][px] = 'W';
                 wood--;
                 wallsBuilt++;
-                alert("Wall built successfully.");
+                notify("Wall built successfully.");
             } else {
-                alert("Cannot build wall here.");
+                notify("Cannot build wall here.");
             }
         }
 
@@ -1513,9 +1592,9 @@
                 m[py][px] = 'G';
                 stone--;
                 carryingCorpse = false;
-                alert("You have built a grave here.");
+                notify("You have built a grave here.");
             } else {
-                alert("Cannot build grave here.");
+                notify("Cannot build grave here.");
             }
         }
 
@@ -1524,9 +1603,9 @@
                 traps.push({ x: px, y: py, hasFood: false });
                 m[py][px] = 't';
                 wood--;
-                alert("Trap laid successfully.");
+                notify("Trap laid successfully.");
             } else {
-                alert("Cannot lay trap here.");
+                notify("Cannot lay trap here.");
             }
         }
         
@@ -1535,9 +1614,9 @@
                 foodStores.push({ x: px, y: py });
                 m[py][px] = '$';
                 wood--;
-                alert("Food storage built successfully.");
+                notify("Food storage built successfully.");
             } else {
-                alert("Cannot build food storage here.");
+                notify("Cannot build food storage here.");
             }
         }
 
