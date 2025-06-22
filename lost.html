@@ -92,6 +92,7 @@
         .M{color:orange}
         .@{color:lime} /* Helicopter */
         .R{color:navy} /* Freighter */
+        .\${color:gold} /* Food Storage */
         .hidden { color: #34495e; }
     </style>
 </head>
@@ -125,6 +126,7 @@
             <p><span class="B">B</span> Black Rock</p>
             <p><span class="M">M</span> Flame</p>
             <p><span class="R">R</span> Freighter</p>
+            <p><span class="$">$</span> Food Storage</p>
         </div>
         <div id="gameArea"></div>
         <div id="commandsGlossary">
@@ -137,6 +139,7 @@
             <p>G: Build grave</p>
             <p>T: Lay trap</p>
             <p>E: Collect/Bury Corpse</p> <!-- Added for corpse actions -->
+            <p>F: Build food storage</p>
             <div id="stationCommands"></div>
         </div>
     </div>
@@ -169,6 +172,8 @@
         let helicopterLocation = null;
 
         let initialSurvivorCount = 15; // Reduced from 30 to 15
+        let foodStores = []; // Array of food storage buildings
+        let storedFood = 0; // Total food in storage
 
         // Lighting System
         // Time-based color palettes for day/night cycle (24 entries for each hour)
@@ -386,7 +391,8 @@
                 'D': 'cyan',     // Dynamite - cyan
                 'M': 'orange',   // Flame - orange
                 '@': 'lime',     // Helicopter - lime
-                'R': 'navy'      // Freighter - navy
+                'R': 'navy',     // Freighter - navy
+                '$': 'gold'      // Food Storage - gold
             };
             
             return colorMap[tileChar] || '#95a5a6'; // Default gray
@@ -426,7 +432,14 @@
 
             px = 14; py = 30;
             for (let i = 0; i < initialSurvivorCount; i++) {
-                surv.push({ x: 13 + Math.floor(Math.random() * 3), y: 29 + Math.floor(Math.random() * 3), inCamp: false, id: Date.now() + Math.random() });
+                surv.push({ 
+                    x: 13 + Math.floor(Math.random() * 3), 
+                    y: 29 + Math.floor(Math.random() * 3), 
+                    inCamp: false, 
+                    id: Date.now() + Math.random(),
+                    assignment: null, // null, 'camp', 'clear', 'hunt'
+                    homeCamp: null // Reference to their assigned camp
+                });
             }
 
             let x = Math.floor(w * 0.7);
@@ -560,7 +573,7 @@
             document.getElementById('gameArea').innerHTML = d;
 
             let peopleInCamps = camps.filter(camp => camp.occupied).length;
-            document.getElementById('info').textContent = `Wood: ${wood} | Stone: ${stone} | Food: ${food} | Day ${day}, ${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')} | People in camps: ${peopleInCamps} | Carrying Corpse: ${carryingCorpse} | Walls Built: ${wallsBuilt} | Hatch Countdown: ${hatchCountdown}`;
+            document.getElementById('info').textContent = `Wood: ${wood} | Stone: ${stone} | Food: ${food} (Stored: ${storedFood}) | Day ${day}, ${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')} | People in camps: ${peopleInCamps} | Carrying Corpse: ${carryingCorpse} | Walls Built: ${wallsBuilt} | Hatch Countdown: ${hatchCountdown}`;
             updateFocus();
             document.getElementById('score').textContent = `Score: ${score.toFixed(1)}%`;
 
@@ -650,6 +663,23 @@
             // Bury corpse if on 'G'
             else if (currentTile === 'G' && carryingCorpse) {
                 buryCorpse();
+            }
+            // Food storage interaction
+            else if (currentTile === '$') {
+                if (food > 0) {
+                    // Store food
+                    storedFood += food;
+                    food = 0;
+                    alert(`Stored all food. Total in storage: ${storedFood}`);
+                } else if (storedFood > 0) {
+                    // Withdraw food
+                    let withdraw = Math.min(5, storedFood);
+                    food += withdraw;
+                    storedFood -= withdraw;
+                    alert(`Withdrew ${withdraw} food. Remaining in storage: ${storedFood}`);
+                } else {
+                    alert("No food to store or withdraw.");
+                }
             }
             else if (currentTile == 'T') { 
                 m[py][px] = 'e'; 
@@ -830,6 +860,23 @@
             if (currentTile === 'C' && !carryingCorpse) {
                 stationCommands.innerHTML += '<p>Press "E" to Collect Corpse</p>';
             }
+            
+            // Food storage commands
+            if (currentTile === '$') {
+                stationCommands.innerHTML += '<p>Press "Space" to Store/Withdraw Food</p>';
+            }
+            
+            // Survivor commands
+            let adjacentSurvivor = getAdjacentSurvivor();
+            if (adjacentSurvivor) {
+                stationCommands.innerHTML += '<h4>Survivor Commands:</h4>';
+                stationCommands.innerHTML += '<p>Press "1" - Go to camp</p>';
+                stationCommands.innerHTML += '<p>Press "2" - Clear area</p>';
+                stationCommands.innerHTML += '<p>Press "3" - Hunt for food</p>';
+                if (adjacentSurvivor.assignment) {
+                    stationCommands.innerHTML += `<p><i>Currently: ${adjacentSurvivor.assignment}</i></p>`;
+                }
+            }
         }
 
         function clearJungle(x, y) {
@@ -973,9 +1020,50 @@
                 return nx >= 0 && nx < w && ny >= 0 && ny < h && m[ny][nx] == 'g';
             });
         }
+        
+        // Calculate taxicab distance between two points
+        function taxicabDistance(x1, y1, x2, y2) {
+            return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+        }
+        
+        // Check if player is adjacent to a survivor
+        function getAdjacentSurvivor() {
+            return surv.find(s => !s.inCamp && taxicabDistance(px, py, s.x, s.y) <= 1);
+        }
+        
+        // Issue command to survivor
+        function commandSurvivor(survivor, command) {
+            survivor.assignment = command;
+            
+            // Find nearest camp for the survivor
+            if (!survivor.homeCamp && camps.length > 0) {
+                let nearestCamp = camps.reduce((nearest, camp) => {
+                    let distToCamp = taxicabDistance(survivor.x, survivor.y, camp.x, camp.y);
+                    let distToNearest = nearest ? taxicabDistance(survivor.x, survivor.y, nearest.x, nearest.y) : Infinity;
+                    return distToCamp < distToNearest ? camp : nearest;
+                }, null);
+                survivor.homeCamp = nearestCamp;
+            }
+            
+            let commandText = {
+                'camp': 'Go to camp',
+                'clear': 'Clear the area',
+                'hunt': 'Hunt for food'
+            };
+            
+            alert(`Survivor ordered to: ${commandText[command]}`);
+        }
 
         function updateSurvivors() {
+            // Check if it's night time - reset assignments and send to camp
+            const isNight = hr >= 20 || hr < 6;
+            
             surv.forEach(s => {
+                // Reset assignments at night
+                if (isNight && s.assignment !== null) {
+                    s.assignment = null;
+                }
+                
                 if (s.inCamp) return; // Skip processing for survivors in camp
 
                 // Check if survivor is on fire
@@ -1013,19 +1101,112 @@
                         s.y = ny;
                     }
                 } else {
-                    // Normal movement if no fire nearby
-                    let [dx, dy] = [[-1, 0], [1, 0], [0, -1], [0, 1]][Math.floor(Math.random() * 4)];
-                    let nx = s.x + dx, ny = s.y + dy;
-                    if (nx >= 0 && nx < w && ny >= 0 && ny < h && !['A', 'w', 's', '~', 'O', 'F', 'J'].includes(m[ny][nx])) {
-                        s.x = nx;
-                        s.y = ny;
-                        if (m[ny][nx] == '^') {
-                            let camp = camps.find(c => c.x == nx && c.y == ny);
-                            if (camp && !camp.occupied) {
-                                camp.occupied = true;
-                                s.inCamp = true;
-                                alert(`A survivor has moved into camp at (${nx}, ${ny}).`);
+                    // Check if survivor is repelled by nearby corpse
+                    let nearbyCorpse = null;
+                    for (let cy = s.y - 2; cy <= s.y + 2; cy++) {
+                        for (let cx = s.x - 2; cx <= s.x + 2; cx++) {
+                            if (cy >= 0 && cy < h && cx >= 0 && cx < w && m[cy][cx] == 'C') {
+                                nearbyCorpse = { x: cx, y: cy };
+                                break;
                             }
+                        }
+                        if (nearbyCorpse) break;
+                    }
+                    
+                    // Movement based on assignment or avoidance
+                    let targetX = s.x, targetY = s.y;
+                    
+                    // Tethering - stay within 20 blocks of home camp
+                    if (s.homeCamp && taxicabDistance(s.x, s.y, s.homeCamp.x, s.homeCamp.y) > 20) {
+                        // Move back towards home camp
+                        targetX = s.homeCamp.x;
+                        targetY = s.homeCamp.y;
+                    } else if (nearbyCorpse) {
+                        // Move away from corpse
+                        let dx = s.x - nearbyCorpse.x;
+                        let dy = s.y - nearbyCorpse.y;
+                        targetX = s.x + Math.sign(dx);
+                        targetY = s.y + Math.sign(dy);
+                    } else if (s.assignment === 'camp' || isNight) {
+                        // Go to nearest camp
+                        let nearestCamp = s.homeCamp || camps.reduce((nearest, camp) => {
+                            let distToCamp = taxicabDistance(s.x, s.y, camp.x, camp.y);
+                            let distToNearest = nearest ? taxicabDistance(s.x, s.y, nearest.x, nearest.y) : Infinity;
+                            return distToCamp < distToNearest ? camp : nearest;
+                        }, null);
+                        
+                        if (nearestCamp) {
+                            targetX = nearestCamp.x;
+                            targetY = nearestCamp.y;
+                        }
+                    } else if (s.assignment === 'clear') {
+                        // Find nearest tree or jungle to clear
+                        let nearestTarget = null;
+                        let minDist = Infinity;
+                        
+                        for (let y = Math.max(0, s.y - 20); y < Math.min(h, s.y + 20); y++) {
+                            for (let x = Math.max(0, s.x - 20); x < Math.min(w, s.x + 20); x++) {
+                                if ((m[y][x] == 'T' || m[y][x] == 'J') && taxicabDistance(s.x, s.y, x, y) < minDist) {
+                                    nearestTarget = { x, y };
+                                    minDist = taxicabDistance(s.x, s.y, x, y);
+                                }
+                            }
+                        }
+                        
+                        if (nearestTarget) {
+                            targetX = nearestTarget.x;
+                            targetY = nearestTarget.y;
+                            
+                            // Clear if adjacent
+                            if (taxicabDistance(s.x, s.y, targetX, targetY) <= 1 && Math.random() < 0.3) {
+                                m[targetY][targetX] = 'g';
+                                if (Math.random() < 0.5) wood++;
+                            }
+                        }
+                    } else if (s.assignment === 'hunt') {
+                        // Find nearest animal to hunt
+                        let nearestAnimal = anim.reduce((nearest, animal) => {
+                            let dist = taxicabDistance(s.x, s.y, animal.x, animal.y);
+                            let nearestDist = nearest ? taxicabDistance(s.x, s.y, nearest.x, nearest.y) : Infinity;
+                            return dist < nearestDist && dist <= 20 ? animal : nearest;
+                        }, null);
+                        
+                        if (nearestAnimal) {
+                            targetX = nearestAnimal.x;
+                            targetY = nearestAnimal.y;
+                            
+                            // Hunt if adjacent
+                            if (taxicabDistance(s.x, s.y, targetX, targetY) <= 1 && Math.random() < 0.2) {
+                                food++;
+                                anim = anim.filter(a => a !== nearestAnimal);
+                            }
+                        }
+                    }
+                    
+                    // Move towards target
+                    let dx = Math.sign(targetX - s.x);
+                    let dy = Math.sign(targetY - s.y);
+                    
+                    // Try to move in the best direction
+                    if (dx !== 0 && Math.random() < 0.7) {
+                        let nx = s.x + dx;
+                        if (nx >= 0 && nx < w && !['A', 'w', 's', '~', 'O', 'F', 'J', 'C'].includes(m[s.y][nx])) {
+                            s.x = nx;
+                        }
+                    } else if (dy !== 0) {
+                        let ny = s.y + dy;
+                        if (ny >= 0 && ny < h && !['A', 'w', 's', '~', 'O', 'F', 'J', 'C'].includes(m[ny][s.x])) {
+                            s.y = ny;
+                        }
+                    }
+                    
+                    // Check if arrived at camp
+                    if (m[s.y][s.x] == '^') {
+                        let camp = camps.find(c => c.x == s.x && c.y == s.y);
+                        if (camp && !camp.occupied) {
+                            camp.occupied = true;
+                            s.inCamp = true;
+                            alert(`A survivor has moved into camp at (${s.x}, ${s.y}).`);
                         }
                     }
                 }
@@ -1039,7 +1220,14 @@
                         x = Math.floor(Math.random() * w);
                         y = Math.floor(Math.random() * h);
                     } while (m[y][x] != 'g');
-                    surv.push({ x: x, y: y, inCamp: false, id: Date.now() + Math.random() });
+                    surv.push({ 
+                        x: x, 
+                        y: y, 
+                        inCamp: false, 
+                        id: Date.now() + Math.random(),
+                        assignment: null,
+                        homeCamp: null
+                    });
                 }
             }
         }
@@ -1246,6 +1434,20 @@
                         alert("You have collected a corpse. Find a grave to bury it.");
                     }
                 }
+                else if (e.key.toLowerCase() == 'f') {
+                    if (wood > 0) {
+                        actionFoodStore();
+                    }
+                }
+                // Survivor commands
+                else if (['1', '2', '3'].includes(e.key)) {
+                    let adjacentSurvivor = getAdjacentSurvivor();
+                    if (adjacentSurvivor) {
+                        if (e.key === '1') commandSurvivor(adjacentSurvivor, 'camp');
+                        else if (e.key === '2') commandSurvivor(adjacentSurvivor, 'clear');
+                        else if (e.key === '3') commandSurvivor(adjacentSurvivor, 'hunt');
+                    }
+                }
             } catch (error) {
                 console.error("Error occurred:", error);
             }
@@ -1325,6 +1527,17 @@
                 alert("Trap laid successfully.");
             } else {
                 alert("Cannot lay trap here.");
+            }
+        }
+        
+        function actionFoodStore() {
+            if (m[py][px] == 'g' || m[py][px] == 'e') {
+                foodStores.push({ x: px, y: py });
+                m[py][px] = '$';
+                wood--;
+                alert("Food storage built successfully.");
+            } else {
+                alert("Cannot build food storage here.");
             }
         }
 
