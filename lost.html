@@ -269,36 +269,32 @@
         // Calculate lighting for a tile based on all light sources
         function calculateLighting(x, y, baseColor) {
             const baseRgb = hexToRgb(baseColor);
-            let totalLight = { r: 0, g: 0, b: 0 };
             
-            // Ambient light based on time of day - very subtle
-            const ambientIntensity = getAmbientIntensity();
-            totalLight.r += applyIntensity(255, ambientIntensity * 0.1);
-            totalLight.g += applyIntensity(255, ambientIntensity * 0.1);
-            totalLight.b += applyIntensity(255, ambientIntensity * 0.1);
+            // Start with the base color
+            let finalR = baseRgb.r;
+            let finalG = baseRgb.g;
+            let finalB = baseRgb.b;
             
-            // Process each light source
+            // Apply slight darkening at night (preserve original colors)
+            const nightDarkness = 0.7; // 70% brightness at night
+            finalR = Math.round(finalR * nightDarkness);
+            finalG = Math.round(finalG * nightDarkness);
+            finalB = Math.round(finalB * nightDarkness);
+            
+            // Add light sources (additive, but subtle)
+            let lightBoost = 0;
             lightSources.forEach(light => {
                 const distance = Math.sqrt((x - light.x) ** 2 + (y - light.y) ** 2);
                 if (distance <= light.radius) {
-                    const intensity = light.intensity * (1 - distance / light.radius);
-                    const lightRgb = hexToRgb(light.color);
-                    totalLight.r += applyIntensity(lightRgb.r, intensity);
-                    totalLight.g += applyIntensity(lightRgb.g, intensity);
-                    totalLight.b += applyIntensity(lightRgb.b, intensity);
+                    const falloff = 1 - (distance / light.radius);
+                    lightBoost = Math.max(lightBoost, falloff * 0.3); // Max 30% brightness boost
                 }
             });
             
-            // Apply lighting to base color
-            const litR = screenBlend(baseRgb.r, totalLight.r);
-            const litG = screenBlend(baseRgb.g, totalLight.g);
-            const litB = screenBlend(baseRgb.b, totalLight.b);
-            
-            // Apply time of day darkening
-            const darknessLevel = getDarknessLevel();
-            const finalR = multiplyBlend(litR, 255 - darknessLevel);
-            const finalG = multiplyBlend(litG, 255 - darknessLevel);
-            const finalB = multiplyBlend(litB, 255 - darknessLevel);
+            // Apply light boost
+            finalR = Math.min(255, finalR + (baseRgb.r * lightBoost));
+            finalG = Math.min(255, finalG + (baseRgb.g * lightBoost));
+            finalB = Math.min(255, finalB + (baseRgb.b * lightBoost));
             
             return rgbToHex(finalR, finalG, finalB);
         }
@@ -355,6 +351,45 @@
                     color: '#ff8844'
                 });
             });
+        }
+        
+        // Get original CSS color for a tile character
+        function getOriginalColor(tileChar) {
+            const colorMap = {
+                'T': '#2ecc71', // Tree - bright emerald
+                'g': '#27ae60', // Grass - medium green
+                'w': '#3498db', // Water - bright blue
+                'C': '#e67e22', // Corpse - orange
+                'G': '#95a5a6', // Grave - gray
+                '*': '#e74c3c', // Player - red
+                'O': '#95a5a6', // Rock - gray
+                'e': '#e67e22', // Earth - orange
+                '=': '#d35400', // Bridge - dark orange
+                '^': '#f1c40f', // Camp - yellow
+                'b': '#f39c12', // Beach - sandy orange
+                's': '#2980b9', // Sea - darker blue
+                'A': '#7f8c8d', // Aircraft - gray
+                'J': '#27ae60', // Jungle - same as grass
+                'S': '#9b59b6', // Survivor - purple
+                'a': 'pink',     // Animal - pink
+                'X': '#2c3e50', // Crater - dark blue-gray
+                'o': '#bdc3c7', // Small rock - light gray
+                'F': 'red',      // Fire - red
+                'W': '#7f8c8d', // Wall - gray
+                'f': 'orange',   // Food - orange
+                'c': 'white',    // ?
+                't': 'brown',    // Trap - brown
+                'H': 'yellow',   // Hatch - yellow
+                'P': 'purple',   // Pearl - purple
+                'L': 'blue',     // Looking Glass - blue
+                'B': 'brown',    // Black Rock - brown
+                'D': 'cyan',     // Dynamite - cyan
+                'M': 'orange',   // Flame - orange
+                '@': 'lime',     // Helicopter - lime
+                'R': 'navy'      // Freighter - navy
+            };
+            
+            return colorMap[tileChar] || '#95a5a6'; // Default gray
         }
 
         let currentFocus = 0;
@@ -498,18 +533,24 @@
                         }
                     }
                     
-                    // Apply dynamic lighting if tile is visible
+                    // Apply CSS class for base color, with optional lighting effects
                     if (visible[y][x]) {
-                        // Get base color for the terrain type
-                        let baseColor;
-                        const colorPalette = timeOfDayColors[originalTile] || timeOfDayColors.default;
-                        baseColor = colorPalette[hr]; // Use hour directly as index
+                        // Check if we should apply lighting effects
+                        const needsLighting = (hr >= 20 || hr < 6); // Only at night
                         
-                        // Calculate final color with lighting
-                        const litColor = calculateLighting(x, y, baseColor);
-                        
-                        // Apply the color using inline style
-                        d += `<span style="color: ${litColor}">${c}</span>`;
+                        if (needsLighting) {
+                            // Get the base CSS color for this tile type
+                            let baseColor = getOriginalColor(c);
+                            
+                            // Calculate lighting effects
+                            const litColor = calculateLighting(x, y, baseColor);
+                            
+                            // Apply inline style for lit color
+                            d += `<span class="${c}" style="color: ${litColor}">${c}</span>`;
+                        } else {
+                            // During day, use original CSS colors
+                            d += `<span class="${c}">${c}</span>`;
+                        }
                     } else {
                         d += `<span class="${c} hidden">${c}</span>`;
                     }
