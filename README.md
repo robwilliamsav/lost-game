@@ -12,6 +12,7 @@ Lost Game is a browser-based ASCII survival game where players must manage survi
 - **Survival Mechanics**: Manage wood, stone, and food resources
 - **Fire System**: Dynamic fire spreading with realistic behavior based on terrain
 - **Time Progression**: Day/night cycles with 15-minute increments
+- **Dynamic Lighting**: Immersive day/night visual cycle with torches, campfires, and ambient lighting
 - **Fog of War**: Explore to reveal the 140x60 game world
 - **Survivor Management**: Guide 15 survivors to safety in camps
 

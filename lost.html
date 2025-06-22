@@ -170,6 +170,193 @@
 
         let initialSurvivorCount = 15; // Reduced from 30 to 15
 
+        // Lighting System
+        // Time-based color palettes for day/night cycle (24 entries for each hour)
+        const timeOfDayColors = {
+            // Grass colors from dark green at night to bright green during day
+            g: [
+                "#0a1a0a", "#0a1a0a", "#0a1a0a", "#0a1a0a", // 0-3am: Very dark green
+                "#0f250f", "#142f14", "#1a3a1a", "#1f451f", // 4-7am: Dawn approaching
+                "#27ae60", "#2ecc71", "#3fd47d", "#4dd888", // 8-11am: Morning brightening
+                "#5ddc94", "#6de0a0", "#7de4ac", "#8de8b8", // 12-3pm: Bright midday
+                "#7de4ac", "#6de0a0", "#5ddc94", "#4dd888", // 4-7pm: Afternoon fading
+                "#3fd47d", "#2ecc71", "#27ae60", "#1f451f", // 8-11pm: Evening darkening
+            ],
+            // Water colors from deep blue-black to bright blue
+            w: [
+                "#0a0a1a", "#0a0a1a", "#0a0a1a", "#0a0a1a", // 0-3am: Almost black
+                "#0f0f25", "#14142f", "#1a1a3a", "#1f1f45", // 4-7am: Deep blue dawn
+                "#2980b9", "#3498db", "#3fa0e3", "#4aa8eb", // 8-11am: Morning blue
+                "#55b0f3", "#60b8fb", "#6bc0ff", "#76c8ff", // 12-3pm: Bright blue
+                "#6bc0ff", "#60b8fb", "#55b0f3", "#4aa8eb", // 4-7pm: Afternoon blue
+                "#3fa0e3", "#3498db", "#2980b9", "#1f1f45", // 8-11pm: Evening blue
+            ],
+            // Tree colors darker than grass
+            T: [
+                "#051005", "#051005", "#051005", "#051005", // 0-3am: Nearly black
+                "#0a1a0a", "#0f250f", "#142f14", "#1a3a1a", // 4-7am: Dark green dawn
+                "#1e7e34", "#229954", "#26b35c", "#2acc64", // 8-11am: Forest green
+                "#2ed66c", "#32e074", "#36ea7c", "#3af484", // 12-3pm: Bright green
+                "#36ea7c", "#32e074", "#2ed66c", "#2acc64", // 4-7pm: Afternoon
+                "#26b35c", "#229954", "#1e7e34", "#1a3a1a", // 8-11pm: Evening
+            ],
+            // Sand/beach colors
+            b: [
+                "#1a1611", "#1a1611", "#1a1611", "#1a1611", // 0-3am: Dark sand
+                "#262117", "#332c1d", "#403723", "#4d4229", // 4-7am: Dawn sand
+                "#b8860b", "#daa520", "#e6b82d", "#f2cb3a", // 8-11am: Morning sand
+                "#ffd947", "#ffe654", "#fff361", "#ffff6e", // 12-3pm: Bright sand
+                "#fff361", "#ffe654", "#ffd947", "#f2cb3a", // 4-7pm: Afternoon
+                "#e6b82d", "#daa520", "#b8860b", "#4d4229", // 8-11pm: Evening
+            ],
+            // Rock colors
+            O: [
+                "#0f0f0f", "#0f0f0f", "#0f0f0f", "#0f0f0f", // 0-3am: Black
+                "#1a1a1a", "#252525", "#303030", "#3b3b3b", // 4-7am: Dark gray
+                "#7f8c8d", "#95a5a6", "#a0b0b1", "#abbbbcb", // 8-11am: Gray
+                "#b6c6c7", "#c1d1d2", "#ccdcdd", "#d7e7e8", // 12-3pm: Light gray
+                "#ccdcdd", "#c1d1d2", "#b6c6c7", "#abbbbc", // 4-7pm: Afternoon
+                "#a0b0b1", "#95a5a6", "#7f8c8d", "#3b3b3b", // 8-11pm: Evening
+            ],
+            // Jungle (darker than regular trees)
+            J: [
+                "#030803", "#030803", "#030803", "#030803", // 0-3am: Almost black
+                "#051005", "#081508", "#0b1a0b", "#0e1f0e", // 4-7am: Very dark green
+                "#145a23", "#187028", "#1c862d", "#209c32", // 8-11am: Dark jungle
+                "#24b237", "#28c83c", "#2cde41", "#30f446", // 12-3pm: Jungle green
+                "#2cde41", "#28c83c", "#24b237", "#209c32", // 4-7pm: Afternoon
+                "#1c862d", "#187028", "#145a23", "#0e1f0e", // 8-11pm: Evening
+            ],
+            // Default color for other terrain
+            default: [
+                "#1a1a1a", "#1a1a1a", "#1a1a1a", "#1a1a1a", // 0-3am
+                "#252525", "#303030", "#3b3b3b", "#464646", // 4-7am
+                "#95a5a6", "#a5b5b6", "#b5c5c6", "#c5d5d6", // 8-11am
+                "#d5e5e6", "#e5f5f6", "#f5ffff", "#ffffff", // 12-3pm
+                "#f5ffff", "#e5f5f6", "#d5e5e6", "#c5d5d6", // 4-7pm
+                "#b5c5c6", "#a5b5b6", "#95a5a6", "#464646", // 8-11pm
+            ]
+        };
+
+        // Light sources array for dynamic lighting
+        const lightSources = [];
+
+        // Color blending functions for lighting
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return { r, g, b };
+        }
+
+        function rgbToHex(r, g, b) {
+            const toHex = n => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+            return '#' + toHex(r) + toHex(g) + toHex(b);
+        }
+
+        function screenBlend(base, light) {
+            return 255 - ((255 - base) * (255 - light)) / 255;
+        }
+
+        function multiplyBlend(base, light) {
+            return (base * light) / 255;
+        }
+
+        function applyIntensity(color, intensity) {
+            return Math.round(color * intensity);
+        }
+
+        // Calculate lighting for a tile based on all light sources
+        function calculateLighting(x, y, baseColor) {
+            const baseRgb = hexToRgb(baseColor);
+            let totalLight = { r: 0, g: 0, b: 0 };
+            
+            // Ambient light based on time of day
+            const ambientIntensity = getAmbientIntensity();
+            totalLight.r += applyIntensity(255, ambientIntensity * 0.3);
+            totalLight.g += applyIntensity(255, ambientIntensity * 0.3);
+            totalLight.b += applyIntensity(255, ambientIntensity * 0.3);
+            
+            // Process each light source
+            lightSources.forEach(light => {
+                const distance = Math.sqrt((x - light.x) ** 2 + (y - light.y) ** 2);
+                if (distance <= light.radius) {
+                    const intensity = light.intensity * (1 - distance / light.radius);
+                    const lightRgb = hexToRgb(light.color);
+                    totalLight.r += applyIntensity(lightRgb.r, intensity);
+                    totalLight.g += applyIntensity(lightRgb.g, intensity);
+                    totalLight.b += applyIntensity(lightRgb.b, intensity);
+                }
+            });
+            
+            // Apply lighting to base color
+            const litR = screenBlend(baseRgb.r, totalLight.r);
+            const litG = screenBlend(baseRgb.g, totalLight.g);
+            const litB = screenBlend(baseRgb.b, totalLight.b);
+            
+            // Apply time of day darkening
+            const darknessLevel = getDarknessLevel();
+            const finalR = multiplyBlend(litR, 255 - darknessLevel);
+            const finalG = multiplyBlend(litG, 255 - darknessLevel);
+            const finalB = multiplyBlend(litB, 255 - darknessLevel);
+            
+            return rgbToHex(finalR, finalG, finalB);
+        }
+        
+        // Get ambient light intensity based on time of day
+        function getAmbientIntensity() {
+            if (hr >= 6 && hr < 18) return 1.0; // Daytime
+            if (hr >= 18 && hr < 20) return 0.7; // Dusk
+            if (hr >= 20 || hr < 4) return 0.2; // Night
+            if (hr >= 4 && hr < 6) return 0.5; // Dawn
+            return 0.5;
+        }
+        
+        // Get darkness level (0-255) based on time
+        function getDarknessLevel() {
+            if (hr >= 6 && hr < 18) return 0; // Daytime
+            if (hr >= 18 && hr < 20) return 100; // Dusk
+            if (hr >= 20 || hr < 4) return 200; // Night
+            if (hr >= 4 && hr < 6) return 150; // Dawn
+            return 0;
+        }
+        
+        // Update light sources based on current game state
+        function updateLightSources() {
+            lightSources.length = 0; // Clear existing light sources
+            
+            // Player torch
+            lightSources.push({
+                x: px,
+                y: py,
+                radius: 8,
+                intensity: 0.8,
+                color: '#ffaa55'
+            });
+            
+            // Camp lights
+            camps.forEach(camp => {
+                lightSources.push({
+                    x: camp.x,
+                    y: camp.y,
+                    radius: 6,
+                    intensity: 0.6,
+                    color: '#ff9944'
+                });
+            });
+            
+            // Fire lights
+            fires.forEach(fire => {
+                lightSources.push({
+                    x: fire.x,
+                    y: fire.y,
+                    radius: 10,
+                    intensity: 1.0,
+                    color: '#ff6600'
+                });
+            });
+        }
+
         let currentFocus = 0;
         const focuses = [
             { name: "Escape the fire", check: () => fires.length === 0, quote: "I was broken and thought the island could fix me." },
@@ -268,10 +455,15 @@
         }
 
         function update() {
+            // Update light sources first
+            updateLightSources();
+            
             let d = "";
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
                     let c = m[y][x];
+                    let originalTile = c; // Store original tile for color lookup
+                    
                     if (x == px && y == py) {
                         c = playerOnFireTurns > 0 ? 'F' : '*';
                     }
@@ -305,7 +497,22 @@
                             }
                         }
                     }
-                    d += `<span class="${c}${visible[y][x] ? '' : ' hidden'}">${c}</span>`;
+                    
+                    // Apply dynamic lighting if tile is visible
+                    if (visible[y][x]) {
+                        // Get base color for the terrain type
+                        let baseColor;
+                        const colorPalette = timeOfDayColors[originalTile] || timeOfDayColors.default;
+                        baseColor = colorPalette[hr]; // Use hour directly as index
+                        
+                        // Calculate final color with lighting
+                        const litColor = calculateLighting(x, y, baseColor);
+                        
+                        // Apply the color using inline style
+                        d += `<span style="color: ${litColor}">${c}</span>`;
+                    } else {
+                        d += `<span class="${c} hidden">${c}</span>`;
+                    }
                 }
                 d += "\n";
             }

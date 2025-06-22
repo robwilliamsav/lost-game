@@ -2,6 +2,32 @@
 
 All notable changes to the Lost Game project will be documented in this file.
 
+## [1.0.2] - 2025-06-22
+
+### Added - Dynamic Lighting System
+- **Day/Night Cycle Visualization**: Game world now dynamically changes colors based on time of day
+  - 24-hour color palettes for each terrain type (grass, water, trees, sand, rocks, jungle)
+  - Smooth transitions between dawn, day, dusk, and night
+  - Ambient light levels vary throughout the day
+  
+- **Dynamic Light Sources**: Interactive lighting that affects gameplay visibility
+  - Player torch with 8-tile radius warm orange glow
+  - Camp lights providing 6-tile radius safe zones
+  - Fire lights with intense 10-tile radius illumination
+  - Light intensity falloff based on distance
+  
+- **Advanced Color Blending**: Sophisticated lighting calculations
+  - Screen blend mode for additive light effects
+  - Multiply blend for darkness application
+  - Real-time color mixing based on multiple light sources
+  - Performance-optimized selective rendering
+
+### Technical Implementation
+- Color manipulation functions: hexToRgb, rgbToHex, screenBlend, multiplyBlend
+- Light source management system with updateLightSources()
+- Modified rendering pipeline to apply per-tile lighting calculations
+- Time-based ambient lighting with dawn/day/dusk/night phases
+
 ## [1.0.1] - 2025-06-22
 
 ### Changed - UI/UX Improvements

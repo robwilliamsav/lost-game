@@ -119,6 +119,7 @@ lost-game/
 - Dynamic command context menus
 - Fullscreen layout utilizing entire viewport
 - Responsive design with flexible panels
+- Dynamic lighting system with day/night visualization
 
 **Input System**
 - Keyboard event handling for all game controls
@@ -131,6 +132,33 @@ lost-game/
 - Flexbox-based layout for responsive fullscreen display
 - Game area uses calc() for dynamic height adjustment
 - Side panels (legend/commands) maintain fixed width with scrollable content
+
+### 7. Lighting System
+
+**Time-Based Color Palettes**
+- 24-hour color cycles for each terrain type
+- Smooth transitions between time periods
+- Separate palettes for grass, water, trees, sand, rocks, jungle
+- Dynamic ambient light levels throughout the day
+
+**Light Source Management**
+- Player torch: 8-tile radius warm orange glow (#ffaa55)
+- Camp lights: 6-tile radius safe zone illumination (#ff9944)
+- Fire lights: 10-tile radius intense illumination (#ff6600)
+- Distance-based intensity falloff calculations
+
+**Color Blending Engine**
+- Screen blend mode for additive light effects
+- Multiply blend for darkness application
+- RGB/Hex conversion utilities
+- Real-time per-tile lighting calculations
+
+**Rendering Pipeline**
+- Update light sources based on game state
+- Calculate base terrain colors from time palettes
+- Apply multiple light source contributions
+- Blend with ambient light and darkness levels
+- Output final colors as inline styles
 
 ## Design Patterns
 
