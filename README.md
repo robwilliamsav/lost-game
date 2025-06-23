@@ -14,7 +14,8 @@ Lost Game is a browser-based ASCII survival game where players must manage survi
 - **Time Progression**: Day/night cycles with 15-minute increments
 - **Dynamic Lighting**: Immersive day/night visual cycle with torches, campfires, and ambient lighting
 - **Fog of War**: Explore to reveal the 140x60 game world
-- **Survivor Management**: Guide 15 survivors to safety in camps
+- **Survivor Management**: Guide 15 survivors to safety in camps (one per camp)
+- **Advanced Survivor AI**: Survivors wander during the day, follow commands, and return to camps at night
 
 ### Building System
 - **Camps** (C key): Establish safe zones for survivors
@@ -50,6 +51,7 @@ Lost Game is a browser-based ASCII survival game where players must manage survi
 - **G**: Build grave (requires stone + carrying corpse)
 - **T**: Lay trap (requires wood)
 - **E**: Collect/bury corpse
+- **1/2/3**: Command adjacent survivors (1: go to camp, 2: clear area, 3: hunt)
 
 ## Files
 

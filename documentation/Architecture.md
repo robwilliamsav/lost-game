@@ -72,9 +72,12 @@ lost-game/
 
 **Survivor AI (`updateSurvivors()` - lines 699-767)**
 - Fire avoidance behavior
-- Camp-seeking pathfinding
+- Camp-seeking pathfinding with one-survivor-per-camp assignment
 - Death mechanics with corpse generation
 - Automatic respawning to maintain population
+- Daytime wandering for idle survivors within 20-block tethered zones
+- Night-time return to assigned camps
+- Command system for player interaction (camp, clear, hunt)
 
 **Resource Management**
 - Wood collection from trees

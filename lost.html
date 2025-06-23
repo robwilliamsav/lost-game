@@ -462,6 +462,7 @@
                 'W': '#7f8c8d', // Wall - gray
                 'f': 'orange',   // Food - orange
                 'c': 'white',    // ?
+                '©': '#f1c40f', // Occupied camp
                 't': 'brown',    // Trap - brown
                 'H': 'yellow',   // Hatch - yellow
                 'P': 'purple',   // Pearl - purple
@@ -618,7 +619,7 @@
                                 else if (c == '^') {
                                     let camp = camps.find(camp => camp.x == x && camp.y == y);
                                     if (camp) {
-                                        c = camp.occupied ? 'C' : '^'; // 'C' represents occupied camp
+                                        c = camp.occupied ? '©' : '^'; // '©' represents occupied camp
                                     }
                                 }
                             }
@@ -1157,6 +1158,9 @@
                             m[s.y][s.x] = 'C'; // Survivor turns into a corpse
                             score -= 1; // Reduce score for survivor death
                             notify(`A survivor has died at (${s.x}, ${s.y}).`);
+                            
+                            // Mark survivor for removal (can't modify array while iterating)
+                            s.isDead = true;
                         } else {
                             survivorsOnFire.set(s.id, burnsLeft);
                         }
@@ -1260,6 +1264,27 @@
                                 anim = anim.filter(a => a !== nearestAnimal);
                             }
                         }
+                    } else if (!isNight && !s.assignment) {
+                        // Daytime wandering for idle survivors within tethered zone
+                        if (Math.random() < 0.3) { // 30% chance to move each turn
+                            let maxDist = s.homeCamp ? 20 : 10; // Tethered distance or smaller wander radius
+                            let centerX = s.homeCamp ? s.homeCamp.x : s.x;
+                            let centerY = s.homeCamp ? s.homeCamp.y : s.y;
+                            
+                            // Random direction
+                            let directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+                            let [dx, dy] = directions[Math.floor(Math.random() * directions.length)];
+                            let nx = s.x + dx;
+                            let ny = s.y + dy;
+                            
+                            // Check if within tethering distance
+                            if (nx >= 0 && nx < w && ny >= 0 && ny < h && 
+                                taxicabDistance(nx, ny, centerX, centerY) <= maxDist &&
+                                !['A', 'w', 's', '~', 'O', 'F', 'J', 'C'].includes(m[ny][nx])) {
+                                targetX = nx;
+                                targetY = ny;
+                            }
+                        }
                     }
                     
                     // Move towards target
@@ -1282,13 +1307,28 @@
                     // Check if arrived at camp
                     if (m[s.y][s.x] == '^') {
                         let camp = camps.find(c => c.x == s.x && c.y == s.y);
-                        if (camp && !camp.occupied) {
+                        if (camp && !camp.occupied && (!camp.assignedSurvivor || camp.assignedSurvivor === s.id)) {
                             camp.occupied = true;
+                            camp.assignedSurvivor = s.id;
                             s.inCamp = true;
+                            s.assignedCamp = camp; // Track which camp this survivor belongs to
                             notify(`A survivor has moved into camp at (${s.x}, ${s.y}).`);
                         }
                     }
                 }
+            });
+            
+            // Remove dead survivors and free up their camps
+            surv = surv.filter(s => {
+                if (s.isDead) {
+                    // Free up the camp if this survivor was assigned to one
+                    if (s.assignedCamp) {
+                        s.assignedCamp.occupied = false;
+                        s.assignedCamp.assignedSurvivor = null;
+                    }
+                    return false; // Remove from array
+                }
+                return true; // Keep in array
             });
 
             // Generate new survivors if less than initial count exist after the airplane crash is resolved
@@ -1572,7 +1612,7 @@
 
             m[py][px] = '^';
             wood--;
-            camps.push({ x: px, y: py, occupied: false });
+            camps.push({ x: px, y: py, occupied: false, assignedSurvivor: null });
             notify("A new camp has been established here.");
         }
 

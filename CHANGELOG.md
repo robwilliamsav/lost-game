@@ -2,6 +2,42 @@
 
 All notable changes to the Lost Game project will be documented in this file.
 
+## [1.0.3] - 2025-06-23
+
+### Added - Enhanced Survivor AI Behavior
+- **Daytime Wandering**: Survivors without assignments now wander within their 20-block tethered zone during daytime
+  - 30% chance to move each turn when idle
+  - Respects terrain restrictions and corpse avoidance
+  - Creates more lifelike survivor behavior
+  
+- **One-Survivor-Per-Camp System**: Each camp can only house one survivor
+  - Camps track their assigned survivor with `assignedSurvivor` property
+  - Survivors remember their assigned camp with `assignedCamp` property
+  - When a survivor dies, their camp is automatically freed for others
+  
+- **Improved Night Behavior**: All survivors return to their assigned camps at night
+  - Assignments are cleared at nightfall (8 PM)
+  - Survivors wake up without assignments in the morning
+  - Creates realistic day/night cycle behavior
+
+### Fixed - Corpse Display Issue
+- **Symbol Conflict Resolution**: Fixed occupied camps using 'C' which conflicted with corpses
+  - Occupied camps now use '©' symbol instead of 'C'
+  - Corpses properly display as 'C' on the map
+  - Added CSS styling for occupied camp symbol
+  
+- **Death Handling**: Improved survivor death mechanics
+  - Dead survivors are properly removed from the survivor array
+  - Camps are freed when their assigned survivor dies
+  - Prevents ghost survivors from occupying camps
+
+### Changed - Non-blocking Notifications
+- **Notification System**: Replaced all blocking alert() calls with smooth notifications
+  - Added sliding animation for new notifications
+  - Auto-dismiss after 5 seconds with fade-out
+  - Different styles for info, warning, error, and success messages
+  - Maintains up to 5 notifications on screen
+
 ## [1.0.2] - 2025-06-22
 
 ### Added - Dynamic Lighting System
